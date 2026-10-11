@@ -27,7 +27,7 @@ def main():
     if args.self_test:
         from .selftest import run
 
-        run(args.data_dir)
+        run(args.data_dir, host=args.host)
     elif args.headless:
         from .peer import PeerNode
 

@@ -110,3 +110,42 @@ def test_chat_ui_delivery_and_composer_preservation(desktop, tmp_path):
         assert peer.id not in app.sessions
     finally:
         b.close()
+
+
+def test_manual_updates_do_not_connect_on_open(desktop, monkeypatch):
+    from lan_drop.updates import Release
+
+    calls = []
+    release = Release(
+        "0.5.0",
+        "https://github.com/powersqb/lindrop/releases/tag/v0.5.0",
+        "https://github.com/powersqb/lindrop/releases/download/v0.5.0/lindrop-v0.5.0-windows-x64.zip",
+        "lindrop-v0.5.0-windows-x64.zip",
+        "a" * 64,
+        100,
+        "新增功能说明",
+    )
+
+    def check(_):
+        calls.append("check")
+        return release, True
+
+    monkeypatch.setattr("lan_drop.update_ui.check_latest", check)
+    desktop.window.deiconify()
+    desktop.show_updates()
+    desktop.window.update()
+    assert calls == []  # Opening settings is not permission to contact GitHub.
+    desktop.check_updates()
+    pump(desktop, lambda: not desktop.update_busy)
+    assert calls == ["check"]
+    assert desktop.update_release == release
+    assert "0.5.0" in desktop.update_status.get()
+    desktop.update_window.geometry("420x320")
+    desktop.window.update()
+    for widget in (desktop.check_button, desktop.download_button, desktop.update_open_button):
+        assert widget.winfo_ismapped()
+        assert widget.winfo_rooty() + widget.winfo_height() <= (
+            desktop.update_window.winfo_rooty() + desktop.update_window.winfo_height()
+        )
+    desktop.close_updates()
+    assert desktop.update_cancel.is_set()

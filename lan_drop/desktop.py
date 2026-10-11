@@ -12,6 +12,7 @@ from .chat_ui import ChatUI
 from .discovery import Peer, device_name
 from .layout import build
 from .peer import PeerNode, describe_files, peer_request
+from .update_ui import UpdateUI
 
 GREEN, BG, MUTED = "#26684e", "#f5f8f4", "#78857c"
 
@@ -23,7 +24,7 @@ def human_size(size):
         size /= 1024
 
 
-class Desktop(ChatUI):
+class Desktop(ChatUI, UpdateUI):
     def __init__(self, args):
         self.args, self.node = args, None
         self.closed, self.sending, self.starting = False, False, False
@@ -267,6 +268,9 @@ class Desktop(ChatUI):
 
     def handle(self, event):
         kind = event["kind"]
+        if kind.startswith("update_"):
+            self.handle_update(event)
+            return
         if kind.startswith("chat_"):
             self.handle_chat(event)
             return
@@ -413,6 +417,8 @@ class Desktop(ChatUI):
 
     def close(self):
         self.closed = True
+        if hasattr(self, "update_cancel"):
+            self.update_cancel.set()
         for peer_id in list(self.sessions):
             self.end_chat(peer_id)
         self.send_cancel.set()

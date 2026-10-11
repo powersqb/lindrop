@@ -16,7 +16,7 @@ from .peer import PeerNode, describe_files, peer_request
 from .server import local_addresses
 
 
-def run(directory: Path):
+def run(directory: Path, host=None):
     directory.mkdir(parents=True, exist_ok=True)
     report = {"ok": False, "version": __version__, "checks": []}
     nodes = []
@@ -27,7 +27,7 @@ def run(directory: Path):
         window.update()
         window.destroy()
         report["checks"].append("bundled Tk and native TkDnD startup")
-        addresses = local_addresses()
+        addresses = local_addresses() if host is None else ([] if host == "127.0.0.1" else [host])
         host = addresses[0] if addresses else "127.0.0.1"
         a = PeerNode(host, 0, directory / "a", "诊断设备 A", discover=bool(addresses))
         nodes.append(a)

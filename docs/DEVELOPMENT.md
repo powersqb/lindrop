@@ -83,7 +83,7 @@ uv run --locked pytest -q --basetemp=outputs/test-temp
 
 ## Git 工作流
 
-已保存 `v0.2.0` 基线，当前开发完成后保存 `v0.3.0`。Git 使用本机已有作者配置。没有创建公网远程仓库。
+已保存 `v0.2.0` 基线和后续版本。Git 使用本机已有作者配置。公开源码仓库为 `powersqb/lindrop`，GitHub 操作状态见验证记录。
 
 ```powershell
 git status
@@ -94,4 +94,26 @@ git commit -m "feat: 描述新增功能"
 git log --oneline --decorate
 ```
 
-日常保留提交即可恢复历史。查看旧代码：`git show v0.2.0:lan_drop/desktop.py`；旧版没有原生拖拽依赖，单独运行旧版应恢复对应工具链。需要异地备份可把整个仓库（包含 `.git`）备份到 NAS，或自行配置私有 Git 远程。不要用未备份的 `reset --hard` 清理修改。
+日常保留提交即可恢复历史。查看旧代码：`git show v0.2.0:lan_drop/desktop.py`；旧版没有原生拖拽依赖，单独运行旧版应恢复对应工具链。需要异地备份可把整个仓库（包含 `.git`）备份到 NAS，或备份到自己的其他 Git 远程。不要用未备份的 `reset --hard` 清理修改。
+
+## GitHub 发布和后续升级
+
+源码仓库：https://github.com/powersqb/lindrop ，正式版页面：https://github.com/powersqb/lindrop/releases 。
+
+`updates.py` 是独立的更新模块，只在用户点击时发出公网 HTTPS 请求。`update_ui.py` 负责交互，后台任务依旧通过主线程队列返回。此模块不会把局域网地址、设备名、聊天或文件发送到 GitHub。更新 ZIP 保存到数据目录的 `updates/`；不自动运行或安装。
+
+当前发布包名为 `lindrop-vX.Y.Z-windows-x64.zip`。GitHub Releases 必须是正式发布（非 draft / prerelease），附件上传完成且 API 提供 `sha256:` 摘要；源仓库、标签和下载地址必须匹配，客户端才允许下载。HTTPS 与官方摘要提供附件一致性保证；GitHub 账户若被攻破不在此校验可解决的范围内。维护账户应自行保管授权。
+
+后续版本先更新 `__init__.py`、`pyproject.toml`、README、USAGE 和 CHANGELOG，再运行 `uv lock` 和测试。使用 Git 标签发布：
+
+```powershell
+git add .
+git commit -m "feat: 本次升级内容"
+git push origin main
+git tag -a v0.5.0 -m "邻传 0.5.0"
+git push origin v0.5.0
+```
+
+标签必须与源版本一致。`.github/workflows/windows.yml` 在 main/PR 上验证，在版本标签上验证后发布：固定的官方 Action 提交号 → Python 3.12.15 / uv 0.13.0 → `uv sync --locked` → Ruff / pytest → EXE → 回环自检 → ZIP 与 SHA256SUMS → Releases。依赖的 Action 发布页和核对日期见 `actions-versions.json`。普通构建仅有 contents:read，只有标签发布 job 才有 contents:write；不需要在源码里存 PAT。Github Actions runner 的真实网卡/组播和第二台实体电脑不由回环自检覆盖。
+
+本机也可运行 `scripts/New-ReleasePackage.ps1` 打包，然后用 GitHub CLI `gh release create` 上传明确的 ZIP 与 SHA256SUMS，不把运行数据加入附件。首次建立远程与发布需要本人 GitHub 授权；连接 Codex 的 GitHub 工具与本机 CLI 登录不是同一份授权。

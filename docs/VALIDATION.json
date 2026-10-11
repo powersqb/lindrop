@@ -1,26 +1,26 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "date": "2026-10-11",
   "source_repository": "apps/lindrop",
-  "release_tag": "v0.3.0",
+  "release_tag": "v0.4.0",
   "baseline_tag": "v0.2.0",
   "runtime": "Windows x64 / Python 3.12.15 / Tk",
   "exe": "outputs\\邻传\\邻传.exe",
-  "exe_bytes": 16506281,
-  "exe_sha256": "adfd1eea839fec5be2db00cf4f8ac7984fd008a405d2e07d4c8130f0ffa90230",
-  "zip": "outputs/邻传-0.3.0-Windows.zip",
+  "exe_bytes": 16654245,
+  "exe_sha256": "515d38df62b376c74410fab6ad5faac9b4f1f34b8966098b397a30034c8b52ef",
+  "zip": "apps/lindrop/outputs/release/lindrop-v0.4.0-windows-x64.zip",
   "app_tests": {
-    "passed": 26,
-    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/tests-release-03-final"
+    "passed": 42,
+    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/tests-04-final"
   },
   "engineering_tests": {
     "passed": 20,
-    "scope": "existing engineering and compatibility tests"
+    "scope": "20 passed for previous 0.3.0 baseline; not rerun for updater-only change"
   },
   "ruff": "check and format --check passed",
   "packaged_selftest": {
     "ok": true,
-    "version": "0.3.0",
+    "version": "0.4.0",
     "checks": [
       "bundled Tk and native TkDnD startup",
       "real LAN multicast discovery between two local app instances",
@@ -34,9 +34,10 @@
     "native_drop_received": true,
     "file": "拖拽 测试文件.txt",
     "status": "pending",
-    "saved_files": 0
+    "saved_files": 0,
+    "scope": "0.3.0 native drag validation; drag implementation unchanged in 0.4.0"
   },
-  "ui": "Windows EXE 720x580 inspected; Tk 640x520 with concurrent send/receive confirmation cards verified",
+  "ui": "0.4.0 Tk tests verify compact main window and manual update dialog at 420x320; opening dialog sends no request",
   "second_physical_computer": "pending",
   "dependencies": {
     "tkinterdnd2": {
@@ -54,5 +55,23 @@
       "latest": "待核实"
     }
   },
-  "privacy": "no relay/proxy/telemetry; chat cache only in memory"
+  "privacy": "LAN chat/files without relay; GitHub HTTPS only for manual update check/download; no telemetry",
+  "github": {
+    "repository": "https://github.com/powersqb/lindrop",
+    "visibility": "public",
+    "status": "repository created; initial push and CI release pending"
+  },
+  "packaged_loopback_selftest": {
+    "ok": true,
+    "version": "0.4.0",
+    "checks": [
+      "bundled Tk and native TkDnD startup",
+      "certificate pin mismatch blocked before control request",
+      "matching verification codes, explicit acceptance and bidirectional HTTPS transfer",
+      "accepted bidirectional encrypted Unicode chat"
+    ],
+    "discovery": "not tested: no LAN adapter",
+    "sha256": "87d9ec463e59ead4ee43afe9e6848ec630bd35c2de3d9b7a535ed6479a740ece"
+  },
+  "update_tests": "release origin/version validation, bounded HTTPS redirects and JSON, download checksum/size/cancel/cleanup; live Releases pending upload"
 }

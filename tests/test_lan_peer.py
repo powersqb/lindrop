@@ -3,6 +3,7 @@
 import dataclasses
 import hashlib
 import json
+import os
 import ssl
 import threading
 import time
@@ -193,6 +194,10 @@ def test_discovery_only_accepts_app_beacons_and_expires():
     assert not discovery.snapshot()
 
 
+@pytest.mark.skipif(
+    os.environ.get("GITHUB_ACTIONS") == "true",
+    reason="LAN multicast requires a local LAN adapter, not a hosted CI VM",
+)
 def test_real_multicast_app_discovery(tmp_path):
     addresses = local_addresses()
     if not addresses:

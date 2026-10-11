@@ -175,7 +175,7 @@ def build(app, args):
 
     app.settings_window = settings = tk.Toplevel(tk_root)
     settings.title("邻传设置")
-    settings.geometry("380x210")
+    settings.geometry("380x255")
     settings.withdraw()
     settings.protocol("WM_DELETE_WINDOW", settings.withdraw)
     frame = ttk.Frame(settings, padding=16)
@@ -198,3 +198,7 @@ def build(app, args):
     app.network = ttk.Combobox(frame, textvariable=app.host_var, values=addresses, state="readonly")
     app.network.pack(fill="x")
     app.network.bind("<<ComboboxSelected>>", app.switch_network)
+
+    ttk.Button(frame, text="软件更新 · GitHub", command=app.show_updates).pack(
+        anchor="e", pady=(12, 0)
+    )
