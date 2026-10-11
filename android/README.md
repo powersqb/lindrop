@@ -1,10 +1,10 @@
-# 邻传 Android 0.1.1（测试版）
+# 邻传 Android 0.1.2（测试版）
 
 Java 原生界面，Android 8+，无第三方运行依赖。用户指定 Mate 80 / HarmonyOS 7，在卓易通内的真实兼容性待用户验证；不等同鸿蒙原生应用。
 
-个人签名 APK：[GitHub 测试版下载](https://github.com/powersqb/lindrop/releases/tag/android-v0.1.1)。0.1.1 已通过 9 项协议与接收存储单元测试、Android Lint、双向 Windows 协议互通，以及 Android 35 模拟器启动/Keystore/TLS 验证，详见 [验证记录](../docs/ANDROID-VALIDATION.json)。
+个人签名 APK：[GitHub 测试版下载](https://github.com/powersqb/lindrop/releases/tag/android-v0.1.2)。0.1.2 已通过 10 项协议与接收存储单元测试、Android Lint、双向 Windows 协议互通，以及 Android 35 模拟器启动/Keystore/TLS 验证，详见 [验证记录](../docs/ANDROID-VALIDATION.json)。
 
-![安卓测试版界面](../docs/assets/android-0.1.1.png)
+![安卓测试版界面](../docs/assets/android-0.1.2.png)
 
 ## 使用
 
@@ -58,3 +58,7 @@ Java 原生界面，Android 8+，无第三方运行依赖。用户指定 Mate 80
 ## 0.1.1 接收修复
 
 新文件提交改用同目录移动，避免兼容环境不支持硬链接导致收完后保存失败。保留原名、内容校验与同名确认；失败在手机端明确显示。顶部新增“收到的文件”入口，设置中也可打开。点击文件后通过系统保存对话框导出到下载等目录；私有目录不会直接出现在普通文件管理中。0.1.1 使用与 0.1.0 相同的个人签名，可覆盖安装；不要卸载，以保留文件与设备身份。
+
+## 已连接电脑自动查找（0.1.2）
+
+升级后先手动连接现有电脑一次；只有设备 ID 与已核对的原证书一致才保存地址（最多 16 台）。随后关闭并重新打开手机邻传，电脑在线且地址不变时，会自动验证并显示在设备列表中，不用再次输入地址。忘记设备同时清除该地址。新电脑第一次仍需手动连接并核对，电脑 IP/端口变化也需要手动刷新地址；自动查找不扫描网段、不访问公网、不发送聊天或文件。两端保持 App 打开。

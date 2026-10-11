@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-11",
+  "ok": true,
+  "scope": "Android Java core on JVM ↔ Windows Python core, loopback TLS",
+  "checks": [
+    "matching first-use SAS",
+    "Unicode chat both directions",
+    "bidirectional exact filename and bytes",
+    "wrong certificate pin blocked",
+    "corrupt overwrite preserves existing file",
+    "cancel blocks subsequent upload",
+    "remembered Android initiated chat and polling reply"
+  ],
+  "android_runtime_verified": true,
+  "mate80_verified": false,
+  "version": "0.1.1",
+  "version_code": 2,
+  "local_unit_tests_passed": 9,
+  "lint_errors": 0,
+  "lint_warnings": 7,
+  "apk_bytes": 47520,
+  "apk_sha256": "81e7582fc8d80b252dfebc25b91dcf6215bf30cb7bb4d58c9bf2bce0776c41b0",
+  "apk_signature": "v2 verified; same signer as 0.1.0",
+  "changes": [
+    "New receive commit uses same-directory move, no hard links",
+    "Global receive commit lock, no unconfirmed overwrite",
+    "Top received-files entry plus settings fallback",
+    "Receive failure shown on phone"
+  ],
+  "android_runtime_status": "success on final runtime source af241a3",
+  "source_commit": "af241a3d78a7d284a4c35594668e0a085400f26b",
+  "real_phone_user_feedback": {
+    "0.1.0": "Install, manual phone-initiated chat and phone-to-PC file succeeded; PC-to-phone final hard-link commit failed",
+    "0.1.1": "Pending user retest"
+  },
+  "previous_validation": "validation/android-0.1.0.json",
+  "android_runtime_checks": [
+    "Android 35 UI startup and received-files top button",
+    "Persistent Android Keystore identity",
+    "TLS client/server and wrong pin rejection",
+    "Original-name commit, late collision protection, confirmed overwrite"
+  ],
+  "android_runtime_run": 38138221166,
+  "unrelated_windows_ci": "Final source af241a3 Windows CI 38138221165 passed; earlier run hit transient Tcl init.tcl read failures",
+  "release_url": "https://github.com/powersqb/lindrop/releases/tag/android-v0.1.1",
+  "release_tag": "android-v0.1.1"
+}
