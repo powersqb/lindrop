@@ -21,5 +21,14 @@
   "exe_bytes": 16713110,
   "exe_sha256": "57dcb1f589419567020d942702101d48a1dc1faffa05a27000c5b226220fe0bd",
   "previous_verification": "validation/windows-0.6.1.json",
-  "discovery": "First TLS presence integration passed; changed certificate blocked; no automatic trust, chat session or file offer. Mate 80 first discovery pending user retest."
+  "discovery": "First TLS presence integration passed; changed certificate blocked; no automatic trust, chat session or file offer. Mate 80 first discovery pending user retest.",
+  "publication": {
+    "tag": "v0.6.2",
+    "source_commit": "fd229d7e75f4f2ab27d124ee0378a73828a709a2",
+    "ci_run": 38140891469,
+    "ci_status": "success",
+    "release_url": "https://github.com/powersqb/lindrop/releases/tag/v0.6.2",
+    "download_verified_sha256": "f200432017a8b99fd616abc0d6996cece7d9aec0fcc645b28eeb77e6353ab861",
+    "latest_update_api": "v0.6.2"
+  }
 }
