@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+.cache/
+build/
+outputs/
+邻传数据/
+.pytest_cache/
+.ruff_cache/
+*.spec

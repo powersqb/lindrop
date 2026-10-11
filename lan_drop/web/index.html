@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>邻传 · 局域网文件传输</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/" aria-label="邻传首页"><span class="logo">↔</span> 邻传<span class="edition">个人版</span></a><span class="pill"><i></i> 局域网直传</span></header>
+<main>
+<section class="intro"><p class="eyebrow">CLOSE BY. SEND SIMPLY.</p><h1>文件，就在身边传。</h1><p class="subtitle">同一个 Wi-Fi，轻松分享。无需账号，文件留在你的设备之间。</p></section>
+<section id="pair-panel" class="card pairing"><div class="card-title"><span class="icon">⌁</span><div><h2>连接这台电脑</h2><p>先核对电脑上的证书指纹，再输入配对码。</p></div></div><form id="pair-form"><label for="code">电脑窗口里的 12 位配对码</label><div class="pair-row"><input id="code" name="code" placeholder="XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="14" required><button id="pair-button" type="submit">安全连接 <span>→</span></button></div></form><p class="hint">配对码每次启动更新 · 连接有效期 1 小时</p></section>
+<section id="transfer-panel" hidden>
+<div class="connection"><span><i></i> 已连接 · HTTPS 加密</span><button id="logout" class="text-button">断开连接</button></div>
+<section class="card drop" id="drop-zone"><span class="upload-icon">↑</span><h2>把文件放到这里</h2><p>拖入文件，或者点击选择。支持一次选择多个文件。</p><button id="choose" type="button">选择文件 <span>＋</span></button><input type="file" id="files" multiple hidden><p class="hint">单文件最多 2 GiB · 仅已配对的设备可下载</p></section>
+<section class="card progress-card" id="progress-panel" hidden><div class="progress-label"><span id="progress-name"></span><button id="cancel" class="text-button">取消</button></div><progress id="progress" value="0" max="100"></progress><p id="progress-text" class="hint" aria-live="polite"></p></section>
+<section class="file-section"><div class="section-title"><h2>共享文件 <span id="count">0</span></h2><button id="refresh" class="text-button">↻ 刷新</button></div><div id="file-list" class="card file-list"><p class="empty">还没有文件，传一个试试。</p></div><p class="hint">同一配对会话内的设备共享此列表；电脑停止服务后链接失效。</p></section>
+</section>
+<p id="message" role="status" aria-live="polite"></p>
+<footer><span>◈ TLS 加密</span><span>◎ 无云端中转</span><span>⌑ 主动选择才共享</span></footer>
+</main><div class="bottom">邻传 <span>·</span> 少一点步骤，多一点自由。</div>
+</body></html>
