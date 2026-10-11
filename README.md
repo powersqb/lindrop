@@ -19,7 +19,7 @@
 
 [完整使用说明](docs/USAGE.md) · [自己修改与打包](docs/DEVELOPMENT.md) · [版本记录](CHANGELOG.md) · [验证记录](docs/VALIDATION.json)
 
-已按用户选择开发 Android 0.1.0 测试版 APK，最低 Android 8；Mate 80 / HarmonyOS 7 兼容环境的实际效果待真机验证。[手机使用与构建](android/README.md) · [手机版协议与验证要求](docs/MOBILE.md)。Windows 稳定版为 0.6.1；修复兼容环境改写广播源地址时电脑发手机失败的问题。
+已按用户选择开发 Android 0.1.1 测试版 APK，最低 Android 8；Mate 80 / HarmonyOS 7 已确认安装、手动聊天与手机发电脑；新版接收保存修复待真机复测。[手机使用与构建](android/README.md) · [手机版协议与验证要求](docs/MOBILE.md)。Windows 稳定版为 0.6.1；修复兼容环境改写广播源地址时电脑发手机失败的问题。
 
 公开仓库：[powersqb/lindrop](https://github.com/powersqb/lindrop) · [下载正式版本](https://github.com/powersqb/lindrop/releases)
 

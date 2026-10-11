@@ -2,9 +2,9 @@
 
 Java 原生界面，Android 8+，无第三方运行依赖。用户指定 Mate 80 / HarmonyOS 7，在卓易通内的真实兼容性待用户验证；不等同鸿蒙原生应用。
 
-个人签名 APK：[GitHub 测试版下载](https://github.com/powersqb/lindrop/releases/tag/android-v0.1.1)。0.1.0 已通过 8 项协议单元测试、Android Lint、双向 Windows 协议互通，以及 Android 35 模拟器启动/Keystore/TLS 验证，详见 [验证记录](../docs/ANDROID-VALIDATION.json)。
+个人签名 APK：[GitHub 测试版下载](https://github.com/powersqb/lindrop/releases/tag/android-v0.1.1)。0.1.1 已通过 9 项协议与接收存储单元测试、Android Lint、双向 Windows 协议互通，以及 Android 35 模拟器启动/Keystore/TLS 验证，详见 [验证记录](../docs/ANDROID-VALIDATION.json)。
 
-![安卓测试版界面](../docs/assets/android-0.1.0.png)
+![安卓测试版界面](../docs/assets/android-0.1.1.png)
 
 ## 使用
 
