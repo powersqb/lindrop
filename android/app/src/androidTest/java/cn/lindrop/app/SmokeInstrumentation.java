@@ -48,7 +48,10 @@ public class SmokeInstrumentation extends Instrumentation {
       waitForIdleSync();
       android.graphics.Bitmap screen = getUiAutomation().takeScreenshot();
       if (screen != null) {
-        try (java.io.FileOutputStream out = new java.io.FileOutputStream(new java.io.File(getTargetContext().getExternalFilesDir(null), "smoke-screen.png"))) {
+        try (java.io.FileOutputStream out =
+            new java.io.FileOutputStream(
+                new java.io.File(
+                    getTargetContext().getExternalFilesDir(null), "smoke-screen.png"))) {
           screen.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
         }
         screen.recycle();

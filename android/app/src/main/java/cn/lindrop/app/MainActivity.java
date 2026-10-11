@@ -324,6 +324,11 @@ public final class MainActivity extends Activity implements Node.Ui {
         });
   }
 
+  @Override
+  public void networkError(Exception error) {
+    android.util.Log.d("LinDrop", "TLS connection ended", error);
+  }
+
   void showNext() {
     if (dialogVisible || dialogs.isEmpty() || destroyed) return;
     dialogVisible = true;

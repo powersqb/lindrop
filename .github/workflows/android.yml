@@ -55,7 +55,7 @@ jobs:
           adb install -r android/app/build/outputs/apk/debug/app-debug.apk
           adb install -r android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           adb shell am instrument -w cn.lindrop.app.test/cn.lindrop.app.SmokeInstrumentation | tee android-smoke.txt
-          adb logcat -d -s LinDrop:E AndroidRuntime:E > android-logcat.txt
+          adb logcat -d -s LinDrop:D AndroidRuntime:E > android-logcat.txt
           adb exec-out screencap -p > android-screen.png
           grep -q 'ANDROID_SMOKE_OK' android-smoke.txt
           adb pull /sdcard/Android/data/cn.lindrop.app/files/smoke-screen.png android-screen.png

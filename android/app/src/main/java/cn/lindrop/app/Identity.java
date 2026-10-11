@@ -5,6 +5,7 @@ import java.math.BigInteger;
 import java.net.Socket;
 import java.security.*;
 import java.security.cert.X509Certificate;
+import java.security.spec.ECGenParameterSpec;
 import java.util.Date;
 import javax.net.ssl.*;
 import javax.security.auth.x500.X500Principal;
@@ -15,24 +16,23 @@ public final class Identity {
   public final String fingerprint;
 
   public Identity() throws Exception {
-    String alias = "lindrop-device-v1";
+    String alias = "lindrop-device-ec-v1";
     KeyStore store = KeyStore.getInstance("AndroidKeyStore");
     store.load(null);
     if (!store.containsAlias(alias)) {
       KeyPairGenerator gen =
-          KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
+          KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore");
       gen.initialize(
-          new KeyGenParameterSpec.Builder(
-                  alias, KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_DECRYPT)
-              .setKeySize(2048)
+          new KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN)
+              .setAlgorithmParameterSpec(new ECGenParameterSpec("secp256r1"))
               .setDigests(
+                  // Conscrypt hashes the TLS transcript before delegating raw ECDSA
+                  // signing to Android Keystore (NONEwithECDSA). The certificate
+                  // itself is still signed with SHA-256 or a stronger digest.
+                  KeyProperties.DIGEST_NONE,
                   KeyProperties.DIGEST_SHA256,
                   KeyProperties.DIGEST_SHA384,
                   KeyProperties.DIGEST_SHA512)
-              .setSignaturePaddings(
-                  KeyProperties.SIGNATURE_PADDING_RSA_PKCS1,
-                  KeyProperties.SIGNATURE_PADDING_RSA_PSS)
-              .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
               .setCertificateSubject(new X500Principal("CN=LinDrop Android"))
               .setCertificateSerialNumber(new BigInteger(Protocol.random(16), 16))
               .setCertificateNotBefore(new Date(1577836800000L))
@@ -56,12 +56,12 @@ public final class Identity {
           }
 
           public String[] getServerAliases(String type, java.security.Principal[] issuers) {
-            return "RSA".equals(type) ? new String[] {alias} : null;
+            return "EC".equals(type) ? new String[] {alias} : null;
           }
 
           public String chooseServerAlias(
               String type, java.security.Principal[] issuers, Socket socket) {
-            return "RSA".equals(type) ? alias : null;
+            return "EC".equals(type) ? alias : null;
           }
 
           public X509Certificate[] getCertificateChain(String name) {

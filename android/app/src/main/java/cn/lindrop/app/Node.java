@@ -20,6 +20,8 @@ public final class Node implements AutoCloseable {
   }
 
   public interface Ui {
+    default void networkError(Exception error) {}
+
     void peers(List<Protocol.Peer> peers);
 
     void message(Protocol.Peer peer, String text, boolean mine);
@@ -314,7 +316,8 @@ public final class Node implements AutoCloseable {
             400,
             new JSONObject().put("error", e.getMessage() == null ? "请求失败" : e.getMessage()));
       }
-    } catch (Exception ignored) {
+    } catch (Exception error) {
+      ui.networkError(error);
     } finally {
       sockets.remove(socket);
     }
