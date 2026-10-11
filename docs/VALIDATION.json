@@ -89,8 +89,57 @@
   "github": {
     "repository": "https://github.com/powersqb/lindrop",
     "release": "https://github.com/powersqb/lindrop/releases/tag/v0.6.0",
-    "status": "not published yet",
-    "ci_preflight": "https://github.com/powersqb/lindrop/actions/runs/38125833760"
+    "status": "published and verified",
+    "ci_preflight": "https://github.com/powersqb/lindrop/actions/runs/38125833760",
+    "release_tag_commit": "f2b9c31",
+    "ci_run": "https://github.com/powersqb/lindrop/actions/runs/38126171721",
+    "ci_conclusion": "success",
+    "ci_tests": {
+      "passed": 66,
+      "skipped": 1,
+      "skip_reason": "Cloud has no real LAN adapter; published EXE real multicast checked locally"
+    }
   },
-  "privacy": "LAN direct TLS; manual GitHub checks/download; explicit install click; no automatic firewall or network profile changes"
+  "privacy": "LAN direct TLS; manual GitHub checks/download; explicit install click; no automatic firewall or network profile changes",
+  "exe": "outputs/邻传/邻传.exe",
+  "exe_bytes": 16666559,
+  "exe_sha256": "0e2fef88ba80d2b2890623026272530bd14f912b337108cd4b911b689c3d17dd",
+  "zip": "outputs/lindrop-windows-x64.zip",
+  "live_update": {
+    "previous": "0.5.0",
+    "latest": "0.6.0",
+    "upgrade_available": true,
+    "release_url": "https://github.com/powersqb/lindrop/releases/tag/v0.6.0",
+    "package_filename": "lindrop-windows-x64.zip",
+    "size": 16392470,
+    "zip_sha256": "22929a466c74aa4fcd41a6e758dcc4714928a0263a4654e9a0e5b7ff9eef9aca",
+    "digest_matches": true,
+    "exe_bytes": 16666559,
+    "exe_sha256": "0e2fef88ba80d2b2890623026272530bd14f912b337108cd4b911b689c3d17dd",
+    "helper_install_ok": true,
+    "packaged_selftest": {
+      "ok": true,
+      "version": "0.6.0",
+      "checks": [
+        "bundled Tk and native TkDnD startup",
+        "real LAN multicast discovery between two local app instances",
+        "certificate pin mismatch blocked before control request",
+        "one-time identity comparison, receiver acceptance and bidirectional HTTPS transfer",
+        "remembered devices connect automatically for bidirectional encrypted Unicode chat"
+      ],
+      "sha256": "87d9ec463e59ead4ee43afe9e6848ec630bd35c2de3d9b7a535ed6479a740ece"
+    }
+  },
+  "packaged_selftest": {
+    "ok": true,
+    "version": "0.6.0",
+    "checks": [
+      "bundled Tk and native TkDnD startup",
+      "real LAN multicast discovery between two local app instances",
+      "certificate pin mismatch blocked before control request",
+      "one-time identity comparison, receiver acceptance and bidirectional HTTPS transfer",
+      "remembered devices connect automatically for bidirectional encrypted Unicode chat"
+    ],
+    "sha256": "87d9ec463e59ead4ee43afe9e6848ec630bd35c2de3d9b7a535ed6479a740ece"
+  }
 }
