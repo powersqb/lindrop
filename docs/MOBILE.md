@@ -2,18 +2,17 @@
 
 核对日期：2026-10-11。目标设备由用户提供：华为 Mate 80，HarmonyOS 7.0.0.109 SP6。
 
-**当前状态：开发准备，尚无可安装手机版。** Windows 0.6.0 保持现状。手机与电脑的实际互通、后台在线能力和安装流程均未验证，不应标为已支持。
+**当前状态：Android 0.1.0 测试版开发与验证中。** 用户已选择安卓版，不再等待鸿蒙开发工具。Windows 0.6.0 保持现状。Mate 80 上的实际互通、后台在线能力和安装流程均未验证，不应标为已支持。
 
 ## 平台选择
 
-优先实现鸿蒙原生应用，采用 ArkTS 界面。Android APK 在 HarmonyOS 5 及以上可经卓易通等兼容环境安装，华为说明支持情况以实际结果为准；尚未验证该环境内邻传所需的 UDP 组播、TLS 监听及反向连接，不能仅凭 APK 能安装就承诺互通。
+按用户选择实现 Android APK，Java 原生控件，无第三方运行时依赖。Android APK 在 HarmonyOS 5 及以上可经卓易通等兼容环境安装，华为说明支持情况以实际结果为准；尚未验证该环境内邻传所需的 UDP 组播、TLS 监听及反向连接，不能仅凭 APK 能安装就承诺互通。组播受限时提供手动输入电脑 IPv4:端口入口，反向 TLS 连接仍然必须可达。
 
 - [华为 APK 安装说明](https://consumer.huawei.com/cn/support/content/zh-cn16061787/)
-- [DevEco Studio 官方下载](https://developer.huawei.com/consumer/cn/deveco-studio/resources/)
-- [工具安装说明](https://developer.huawei.com/consumer/en/doc/harmonyos-guides/ide-software-install)
-- [真机自动签名说明](https://developer.huawei.com/consumer/cn/doc/HarmonyOS-Guides/ide-signing-auto)
+- [Android 官方 SDK 下载](https://developer.android.com/studio#command-tools)
+- [官方命令行编译说明](https://developer.android.com/build/building-cmdline)
 
-这台电脑尚未安装 DevEco Studio / HarmonyOS SDK。官方工具下载需要用户登录华为账号；下载后记录实际工具版本、SDK/API 和编译结果，不把官网版本信息当成已安装版本。真机 HAP 需要签名；账号登录、身份认证（如要求）、设备调试授权由用户本人完成。签名证书、私钥、Profile、设备标识不进入公开仓库。
+工具链在工程 `tools/`：Temurin JDK 17.0.20.1、Gradle 8.11.1、Android SDK API 35 / Build Tools 35.0.0，命令行工具包 15859902；下载均已核对 SHA-256。AGP 固定 8.9.2，最低 Android 8（API 26），目标 API 35；固定兼容工具版本，不宣称全部为最新。APK 使用本地持久签名密钥，签名材料在 `outputs/android-signing/`，不进入公开 Git；日后覆盖升级必须保留该密钥并递增 versionCode。详见 [Android 开发说明](../android/README.md)。
 
 ## 第一版交互目标
 
@@ -46,8 +45,8 @@
 
 ## 编译与验收关卡
 
-1. 安装并记录官方 DevEco Studio / SDK；先用官方模板完成编译及模拟器预览。
-2. 验证目标 SDK 的 UDP 组播、TLS 服务端和证书指纹接口。若需要原生网络模块，使用可审查依赖并记录许可证；不以关闭 TLS 或身份验证绕过问题。
-3. 实现协议和精简界面，使用本机电脑测试正确/错误验证码、指纹变化、取消、同名文件和 Unicode 文件名。
-4. 用户连接 Mate 80，完成签名与调试授权；安装真机验证手机 ↔ Windows 0.6.0 的发现、聊天、双向文件字节一致性及原文件名。
-5. 真机通过后才记录支持状态和发布手机版；手机更新机制另行设计，Windows 的 EXE 替换方案不能直接套用到 HAP。
+1. 固定 JDK、Gradle、SDK，完成 APK 编译、8 项协议边界测试及 Android Lint。
+2. 用同一 Java 通信核心对接电脑 Python 核心，验证验证码、双向聊天、原名文件、损坏上传保护和取消；JVM 测试不等于手机运行。
+3. 在 Android 35 模拟器验证启动界面、Android Keystore 的持久身份、TLS 服务端/客户端和错误证书 pin。
+4. 用户在 Mate 80 安装测试版，验证手机 ↔ Windows 0.6.0 的发现、聊天、双向原名文件；卓易通兼容环境的实际网络限制单独记录。
+5. 手机更新机制另行设计，Windows 的 EXE 替换方案不能直接套用到 APK；首版提供手动下载安装、同一签名覆盖升级。

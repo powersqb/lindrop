@@ -1,0 +1,57 @@
+name: Android build and runtime verification
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', 'scripts/*Android*', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['android/**', 'scripts/*Android*', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build and test
+        run: |
+          chmod +x android/gradlew
+          android/gradlew -p android --no-daemon assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug
+      - name: Start Android 35 emulator
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'emulator' 'system-images;android-35;default;x86_64'
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n lindrop -k 'system-images;android-35;default;x86_64' --force
+          sudo chmod 666 /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -avd lindrop -no-window -no-audio -no-snapshot -gpu swiftshader_indirect > emulator.log 2>&1 &
+          adb wait-for-device
+          for i in $(seq 1 120); do
+            if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = '1' ]; then break; fi
+            sleep 2
+          done
+          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = '1'
+          adb shell input keyevent 82
+      - name: Android UI, Keystore and TLS smoke test
+        run: |
+          adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+          adb install -r android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          adb shell am instrument -w cn.lindrop.app.test/cn.lindrop.app.SmokeInstrumentation | tee android-smoke.txt
+          grep -q 'ANDROID_SMOKE_OK' android-smoke.txt
+          adb exec-out screencap -p > android-screen.png
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: android-test-build
+          retention-days: 14
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/reports/
+            android-smoke.txt
+            android-screen.png
+            emulator.log

@@ -1,0 +1,20 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'cn.lindrop.app'
+    compileSdk 35
+    defaultConfig { applicationId 'cn.lindrop.app'; minSdk 26; targetSdk 35; versionCode 1; versionName '0.1.0'; testInstrumentationRunner 'cn.lindrop.app.SmokeInstrumentation' }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    testOptions { unitTests.returnDefaultValues = true; unitTests.all { jvmArgs '-Dfile.encoding=UTF-8' } }
+    signingConfigs {
+        personal {
+            if (System.getenv('LINDROP_ANDROID_KEYSTORE')) {
+                storeFile file(System.getenv('LINDROP_ANDROID_KEYSTORE'))
+                storePassword System.getenv('LINDROP_ANDROID_KEY_PASSWORD')
+                keyAlias 'lindrop'
+                keyPassword System.getenv('LINDROP_ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes { release { if (System.getenv('LINDROP_ANDROID_KEYSTORE')) signingConfig signingConfigs.personal } }
+}
+dependencies { testImplementation 'junit:junit:4.13.2'; testImplementation 'org.json:json:20250517' }
