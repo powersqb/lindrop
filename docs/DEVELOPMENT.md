@@ -114,6 +114,6 @@ git tag -a v0.5.0 -m "邻传 0.5.0"
 git push origin v0.5.0
 ```
 
-标签必须与源版本一致。`.github/workflows/windows.yml` 在 main/PR 上验证，在版本标签上验证后发布：固定的官方 Action 提交号 → Python 3.12.15 / uv 0.13.0 → `uv sync --locked` → Ruff / pytest → EXE → 回环自检 → ZIP 与 SHA256SUMS → Releases。依赖的 Action 发布页和核对日期见 `actions-versions.json`。普通构建仅有 contents:read，只有标签发布 job 才有 contents:write；不需要在源码里存 PAT。Github Actions runner 的真实网卡/组播和第二台实体电脑不由回环自检覆盖。
+标签必须与源版本一致。`.github/workflows/windows.yml` 在 main/PR 上验证，在版本标签上验证后发布：固定的官方 Action 提交号 → uv 0.13.0 管理的 Python 3.12.15 → `uv sync --locked` → Ruff / pytest → EXE → 回环自检 → ZIP 与 SHA256SUMS → Releases。依赖的 Action 发布页和核对日期见 `actions-versions.json`。普通构建仅有 contents:read，只有标签发布 job 才有 contents:write；不需要在源码里存 PAT。Github Actions runner 的真实网卡/组播和第二台实体电脑不由回环自检覆盖。
 
 本机也可运行 `scripts/New-ReleasePackage.ps1` 打包，然后用 GitHub CLI `gh release create` 上传明确的 ZIP 与 SHA256SUMS，不把运行数据加入附件。首次建立远程与发布需要本人 GitHub 授权；连接 Codex 的 GitHub 工具与本机 CLI 登录不是同一份授权。
