@@ -245,7 +245,7 @@ public final class Node implements AutoCloseable {
         0,
         1,
         TimeUnit.SECONDS);
-    ui.status("在线 · " + host + ":" + port + " · 安卓 0.1.0");
+    ui.status("在线 · " + host + ":" + port + " · 安卓 0.1.1");
   }
 
   boolean remembered(Protocol.Peer p) throws IOException {
