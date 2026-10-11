@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-11",
+  "ok": true,
+  "scope": "Android Java core on JVM ↔ Windows Python core, loopback TLS",
+  "checks": [
+    "matching first-use SAS",
+    "Unicode chat both directions",
+    "bidirectional exact filename and bytes",
+    "wrong certificate pin blocked",
+    "corrupt overwrite preserves existing file",
+    "cancel blocks subsequent upload",
+    "remembered Android initiated chat and polling reply"
+  ],
+  "android_runtime_verified": true,
+  "mate80_verified": false,
+  "android_runtime_checks": [
+    "Android 35 emulator UI startup",
+    "persistent Android Keystore P-256 identity",
+    "TLS client/server",
+    "wrong pin rejection"
+  ],
+  "android_ci_url": "https://github.com/powersqb/lindrop/actions/runs/38132462594",
+  "build": {
+    "min_sdk": 26,
+    "version": "0.1.0",
+    "apk_signing": "v2, personal persistent key, not debuggable",
+    "lint_warnings": 7,
+    "runtime_source_commit": "7a42581",
+    "lint_errors": 0,
+    "sha256": "331218da14c8726238b74b35cb3ce4af1f3427709eeed60b66b6f711b514f1e7",
+    "apk_bytes": 47200,
+    "target_sdk": 35,
+    "java_core_test_certificate": "ECDSA P-256",
+    "unit_tests": 8
+  }
+}

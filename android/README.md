@@ -2,6 +2,10 @@
 
 Java 原生界面，Android 8+，无第三方运行依赖。用户指定 Mate 80 / HarmonyOS 7，在卓易通内的真实兼容性待用户验证；不等同鸿蒙原生应用。
 
+约 46 KiB 的个人签名 APK：[GitHub 测试版下载](https://github.com/powersqb/lindrop/releases/tag/android-v0.1.0)。已通过 8 项协议单元测试、Android Lint、双向 Windows 协议互通，以及 Android 35 模拟器启动/Keystore/TLS 验证，详见 [验证记录](../docs/ANDROID-VALIDATION.json)。
+
+![安卓测试版界面](../docs/assets/android-0.1.0.png)
+
 ## 使用
 
 1. 将 `lindrop-android.apk` 传到手机，按系统提供的方式安装。HarmonyOS 5+ APK 安装请参照 [华为说明](https://consumer.huawei.com/cn/support/content/zh-cn16061787/)，以兼容环境实际支持为准。

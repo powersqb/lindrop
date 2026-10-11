@@ -2,7 +2,7 @@
 
 核对日期：2026-10-11。目标设备由用户提供：华为 Mate 80，HarmonyOS 7.0.0.109 SP6。
 
-**当前状态：Android 0.1.0 测试版开发与验证中。** 用户已选择安卓版，不再等待鸿蒙开发工具。Windows 0.6.0 保持现状。Mate 80 上的实际互通、后台在线能力和安装流程均未验证，不应标为已支持。
+**当前状态：Android 0.1.0 测试版已完成编译、8 项单元测试、Android Lint、与 Windows 协议的双向 TLS 互通，以及 Android 35 模拟器启动/Keystore/TLS 验证。** 用户已选择安卓版，不再等待鸿蒙开发工具。Windows 0.6.0 保持现状。Mate 80 上的实际互通、后台在线能力和安装流程尚未验证，不应标为已支持。记录见 [Android 验证结果](ANDROID-VALIDATION.json)。
 
 ## 平台选择
 
@@ -12,7 +12,7 @@
 - [Android 官方 SDK 下载](https://developer.android.com/studio#command-tools)
 - [官方命令行编译说明](https://developer.android.com/build/building-cmdline)
 
-工具链在工程 `tools/`：Temurin JDK 17.0.20.1、Gradle 8.11.1、Android SDK API 35 / Build Tools 35.0.0，命令行工具包 15859902；下载均已核对 SHA-256。AGP 固定 8.9.2，最低 Android 8（API 26），目标 API 35；固定兼容工具版本，不宣称全部为最新。APK 使用本地持久签名密钥，签名材料在 `outputs/android-signing/`，不进入公开 Git；日后覆盖升级必须保留该密钥并递增 versionCode。详见 [Android 开发说明](../android/README.md)。
+工具链在工程 `tools/`：Temurin JDK 17.0.20.1、Gradle 8.11.1、Android SDK API 35 / Build Tools 35.0.0，命令行工具包 15859902。JDK、Gradle 与 SDK 命令行工具下载包已核对 SHA-256，SDK 组件由官方 sdkmanager 安装。AGP 固定 8.9.2，最低 Android 8（API 26），目标 API 35；固定兼容工具版本，不宣称全部为最新。APK 使用本地持久签名密钥，签名材料在 `outputs/android-signing/`，不进入公开 Git；日后覆盖升级必须保留该密钥并递增 versionCode。详见 [Android 开发说明](../android/README.md)。
 
 ## 第一版交互目标
 
