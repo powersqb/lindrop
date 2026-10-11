@@ -35,6 +35,15 @@
       "background/lockscreen operation"
     ]
   },
-  "publication": "pending CI and tagged release",
+  "publication": {
+    "tag": "v0.6.1",
+    "source_commit": "b4182ebbc7ae9cf0133679084e1b66fc7686b11a",
+    "ci_run": 38136322623,
+    "ci_status": "success",
+    "release_url": "https://github.com/powersqb/lindrop/releases/tag/v0.6.1",
+    "download_verified_sha256": "da3fcaacb30b838d96cafc0c620c2ea477b6a6d8e493716ab3faa4dcd871ba27",
+    "latest_update_api": "v0.6.1",
+    "running_user_exe": "0.6.0; user triggers install and restart"
+  },
   "previous_verification": "validation/windows-0.6.0.json"
 }
