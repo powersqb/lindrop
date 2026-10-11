@@ -19,6 +19,8 @@
 
 [完整使用说明](docs/USAGE.md) · [自己修改与打包](docs/DEVELOPMENT.md) · [版本记录](CHANGELOG.md) · [验证记录](docs/VALIDATION.json)
 
+手机版正在开发准备，目标为 Mate 80 / HarmonyOS 7 原生应用，尚无可安装包。平台选择、工具链与电脑互通要求见 [手机版开发说明](docs/MOBILE.md)。
+
 公开仓库：[powersqb/lindrop](https://github.com/powersqb/lindrop) · [下载正式版本](https://github.com/powersqb/lindrop/releases)
 
 ## 源码与升级
