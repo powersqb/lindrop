@@ -43,6 +43,57 @@ public class SmokeInstrumentation extends Instrumentation {
       JSONObject hello =
           Wire.request(second.client, self, node.host, "GET", "/peer/hello", null, null);
       if (!hello.getString("id").equals(node.id)) throw new AssertionError("TLS hello mismatch");
+      Protocol.Peer saved = KnownPeers.decode(KnownPeers.encode(self).toString());
+      Node restored =
+          new Node(
+              second.server,
+              second.client,
+              "b".repeat(32),
+              second.fingerprint,
+              node.host,
+              "Auto test",
+              new java.io.File(getTargetContext().getFilesDir(), "auto-test"),
+              new Node.Trust() {
+                public String get(String id) {
+                  return id.equals(saved.id) ? saved.fp : null;
+                }
+
+                public void remember(String id, String fp) {
+                  throw new AssertionError("Auto trust");
+                }
+
+                public java.util.List<Protocol.Peer> endpoints() {
+                  return java.util.List.of(saved);
+                }
+              },
+              new Node.Ui() {
+                public void peers(java.util.List<Protocol.Peer> peers) {}
+
+                public void message(Protocol.Peer p, String text, boolean mine) {}
+
+                public void status(String text) {}
+
+                public boolean confirm(String title, String text) {
+                  throw new AssertionError("Auto confirmation");
+                }
+              });
+      try {
+        restored.startSaved();
+        long deadline = System.currentTimeMillis() + 10000;
+        while (!restored.peers.containsKey(saved.id) && System.currentTimeMillis() < deadline)
+          Thread.sleep(100);
+        if (!restored.peers.containsKey(saved.id))
+          throw new AssertionError("Saved endpoint not restored online");
+        Protocol.Peer wrongId =
+            new Protocol.Peer(KnownPeers.encode(saved).put("id", "c".repeat(32)), saved.host);
+        try {
+          KnownPeers.probe(second.client, wrongId, node.host);
+          throw new AssertionError("Saved device ID mismatch accepted");
+        } catch (java.io.IOException expected) {
+        }
+      } finally {
+        restored.close();
+      }
       Protocol.Peer wrong =
           new Protocol.Peer(node.identity().put("fingerprint", "0".repeat(64)), node.host);
       try (SSLSocket ignored = Wire.connect(second.client, wrong, node.host)) {
@@ -90,7 +141,8 @@ public class SmokeInstrumentation extends Instrumentation {
       result.putString(
           "stream",
           "ANDROID_SMOKE_OK: UI, Android Keystore persistence, TLS server/client, wrong-pin"
-              + " rejection, original-name receive commit and collision protection\n");
+              + " rejection, original-name receive commit, collision protection, saved endpoint"
+              + " automatic discovery and device ID mismatch rejection\n");
       finish(-1, result);
     } catch (Throwable error) {
       result.putString("stream", "ANDROID_SMOKE_FAILED: " + error + "\n");

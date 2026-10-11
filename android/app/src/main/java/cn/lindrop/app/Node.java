@@ -17,6 +17,12 @@ public final class Node implements AutoCloseable {
     String get(String id);
 
     void remember(String id, String fp) throws Exception;
+
+    default List<Protocol.Peer> endpoints() {
+      return Collections.emptyList();
+    }
+
+    default void rememberEndpoint(Protocol.Peer peer) throws Exception {}
   }
 
   public interface Ui {
@@ -39,6 +45,10 @@ public final class Node implements AutoCloseable {
   final File received;
   final Map<String, Protocol.Peer> peers = new ConcurrentHashMap<>();
   final Set<String> manualPeers = ConcurrentHashMap.newKeySet();
+  final Map<String, Protocol.Peer> savedPeers = new ConcurrentHashMap<>();
+  final Set<String> probing = ConcurrentHashMap.newKeySet();
+  final ThreadPoolExecutor reconnect =
+      new ThreadPoolExecutor(2, 2, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(16));
   final Map<String, Channel> channels = new ConcurrentHashMap<>();
   final Map<String, Outgoing> outgoing = new ConcurrentHashMap<>();
   final Map<String, Offer> offers = new ConcurrentHashMap<>();
@@ -245,7 +255,56 @@ public final class Node implements AutoCloseable {
         0,
         1,
         TimeUnit.SECONDS);
-    ui.status("在线 · " + host + ":" + port + " · 安卓 0.1.1");
+    startSaved();
+    ui.status("在线 · " + host + ":" + port + " · 安卓 0.1.2");
+  }
+
+  void startSaved() {
+    for (Protocol.Peer p : trust.endpoints()) {
+      if (savedPeers.size() >= 16) break;
+      if (!p.id.equals(id) && Protocol.equal(trust.get(p.id), p.fp)) savedPeers.put(p.id, p);
+    }
+    timers.scheduleWithFixedDelay(this::probeSaved, 0, 5, TimeUnit.SECONDS);
+  }
+
+  void track(Protocol.Peer p) throws Exception {
+    if (!remembered(p) || p.id.equals(id)) return;
+    if (savedPeers.containsKey(p.id) || savedPeers.size() < 16) {
+      trust.rememberEndpoint(p);
+      savedPeers.put(p.id, p);
+    }
+  }
+
+  void probeSaved() {
+    for (Protocol.Peer p : savedPeers.values()) {
+      if (closed || !Protocol.equal(trust.get(p.id), p.fp) || !probing.add(p.id)) continue;
+      try {
+        reconnect.execute(
+            () -> {
+              try {
+                Protocol.Peer online = KnownPeers.probe(tlsClient, p, host);
+                if (!closed && Protocol.equal(trust.get(p.id), p.fp)) {
+                  peers.put(p.id, online);
+                  ui.peers(new ArrayList<>(peers.values()));
+                }
+              } catch (Exception e) {
+                peers.computeIfPresent(
+                    p.id,
+                    (k, current) ->
+                        current.host.equals(p.host)
+                                && current.port == p.port
+                                && current.fp.equals(p.fp)
+                            ? null
+                            : current);
+                if (!closed) ui.peers(new ArrayList<>(peers.values()));
+              } finally {
+                probing.remove(p.id);
+              }
+            });
+      } catch (RejectedExecutionException e) {
+        probing.remove(p.id);
+      }
+    }
   }
 
   boolean remembered(Protocol.Peer p) throws IOException {
@@ -258,6 +317,7 @@ public final class Node implements AutoCloseable {
   void remember(Protocol.Peer p) throws Exception {
     remembered(p);
     trust.remember(p.id, p.fp);
+    track(p);
   }
 
   JSONObject request(Protocol.Peer p, String method, String path, JSONObject data, String secret)
@@ -668,6 +728,7 @@ public final class Node implements AutoCloseable {
               throw new IOException("对方不是兼容邻传设备");
             p = new Protocol.Peer(hello, ip);
             remembered(p);
+            track(p);
             if (manualPeers.size() >= 128) throw new IOException("手动设备已达上限");
             manualPeers.add(p.id);
             peers.put(p.id, p);
@@ -938,5 +999,6 @@ public final class Node implements AutoCloseable {
     timers.shutdownNow();
     actions.shutdownNow();
     handlers.shutdownNow();
+    reconnect.shutdownNow();
   }
 }

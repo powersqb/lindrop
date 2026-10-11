@@ -82,12 +82,17 @@ public final class Wire {
 
   public static SSLSocket connect(SSLContext context, Protocol.Peer p, String source)
       throws Exception {
+    return connect(context, p, source, 30000);
+  }
+
+  static SSLSocket connect(SSLContext context, Protocol.Peer p, String source, int timeout)
+      throws Exception {
     if (!Protocol.lan(p.host)) throw new IOException("仅支持局域网");
     Socket raw = new Socket();
     try {
       raw.bind(new InetSocketAddress(source, 0));
-      raw.connect(new InetSocketAddress(p.host, p.port), 5000);
-      raw.setSoTimeout(30000);
+      raw.connect(new InetSocketAddress(p.host, p.port), Math.min(5000, timeout));
+      raw.setSoTimeout(timeout);
       SSLSocket s = (SSLSocket) context.getSocketFactory().createSocket(raw, p.host, p.port, true);
       s.setEnabledProtocols(new String[] {"TLSv1.2"});
       s.startHandshake();
@@ -146,8 +151,21 @@ public final class Wire {
       JSONObject data,
       String secret)
       throws Exception {
+    return request(ctx, p, source, method, path, data, secret, 30000);
+  }
+
+  static JSONObject request(
+      SSLContext ctx,
+      Protocol.Peer p,
+      String source,
+      String method,
+      String path,
+      JSONObject data,
+      String secret,
+      int timeout)
+      throws Exception {
     byte[] b = data == null ? new byte[0] : data.toString().getBytes(StandardCharsets.UTF_8);
-    try (SSLSocket s = connect(ctx, p, source)) {
+    try (SSLSocket s = connect(ctx, p, source, timeout)) {
       requestHead(s.getOutputStream(), p, method, path, b.length, "X-Offer-Secret", secret);
       s.getOutputStream().write(b);
       s.getOutputStream().flush();

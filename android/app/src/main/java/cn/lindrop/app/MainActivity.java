@@ -201,6 +201,32 @@ public final class MainActivity extends Activity implements Node.Ui {
             }
             Node.Trust trust =
                 new Node.Trust() {
+                  public List<Protocol.Peer> endpoints() {
+                    List<Protocol.Peer> saved = new ArrayList<>();
+                    for (String k : prefs.getAll().keySet()) {
+                      if (!k.startsWith("endpoint-") || saved.size() >= 16) continue;
+                      try {
+                        Protocol.Peer p = KnownPeers.decode(prefs.getString(k, ""));
+                        if (Protocol.equal(get(p.id), p.fp)) saved.add(p);
+                      } catch (Exception ignored) {
+                        /* Invalid cache is never an identity. */
+                      }
+                    }
+                    return saved;
+                  }
+
+                  public synchronized void rememberEndpoint(Protocol.Peer p) throws Exception {
+                    if (!Protocol.equal(get(p.id), p.fp)) throw new IOException("设备尚未核对");
+                    String k = "endpoint-" + p.id;
+                    long count =
+                        prefs.getAll().keySet().stream()
+                            .filter(v -> v.startsWith("endpoint-"))
+                            .count();
+                    if (!prefs.contains(k) && count >= 16) return;
+                    if (!prefs.edit().putString(k, KnownPeers.encode(p).toString()).commit())
+                      throw new IOException("无法保存设备地址");
+                  }
+
                   public String get(String peerId) {
                     return prefs.getString("pin-" + peerId, null);
                   }
@@ -522,7 +548,7 @@ public final class MainActivity extends Activity implements Node.Ui {
   void settings() {
     String local = node == null ? "未连接" : node.host + ":" + node.port;
     new AlertDialog.Builder(this)
-        .setTitle("邻传安卓 0.1.1 · 测试版")
+        .setTitle("邻传安卓 0.1.2 · 测试版")
         .setItems(
             new String[] {"手动连接电脑", "重试网络连接", "修改设备名", "移除设备信任", "关于与使用说明", "收到的文件"},
             (d, i) -> {
@@ -538,7 +564,7 @@ public final class MainActivity extends Activity implements Node.Ui {
               if (i == 5) received();
               if (i == 4)
                 new AlertDialog.Builder(this)
-                    .setTitle("邻传安卓 0.1.1")
+                    .setTitle("邻传安卓 0.1.2")
                     .setMessage(
                         "本机："
                             + local
@@ -624,7 +650,11 @@ public final class MainActivity extends Activity implements Node.Ui {
                     .setPositiveButton(
                         "移除",
                         (a, b) -> {
-                          prefs.edit().remove(ids.get(i)).apply();
+                          prefs
+                              .edit()
+                              .remove(ids.get(i))
+                              .remove("endpoint-" + ids.get(i).substring(4))
+                              .apply();
                           if (node != null) node.close();
                           node = null;
                           status("信任已移除，请重试网络连接");

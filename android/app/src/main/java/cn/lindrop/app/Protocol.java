@@ -127,7 +127,7 @@ public final class Protocol {
       this.port = j.getInt("port");
       this.name = j.getString("name");
       this.host = host;
-      seen = System.nanoTime();
+      seen = System.nanoTime() / 1000000;
       if (!lan(host)
           || !id.matches("[0-9a-f]{32}")
           || !fp.matches("[0-9a-f]{64}")
