@@ -26,7 +26,11 @@ public class SmokeInstrumentation extends Instrumentation {
       long end = System.currentTimeMillis() + 30000;
       while (activity.node == null && System.currentTimeMillis() < end) Thread.sleep(200);
       Node node = activity.node;
-      if (node == null) throw new AssertionError("Node not started");
+      if (node == null) {
+        String[] status = {""};
+        runOnMainSync(() -> status[0] = activity.status.getText().toString());
+        throw new AssertionError("Node not started: " + status[0]);
+      }
       while (node.port == 0 && System.currentTimeMillis() < end) Thread.sleep(200);
       Identity second = new Identity();
       if (!second.fingerprint.equals(node.fp))
@@ -40,6 +44,14 @@ public class SmokeInstrumentation extends Instrumentation {
       try (SSLSocket ignored = Wire.connect(second.client, wrong, node.host)) {
         throw new AssertionError("Wrong certificate pin accepted");
       } catch (SSLException expected) {
+      }
+      waitForIdleSync();
+      android.graphics.Bitmap screen = getUiAutomation().takeScreenshot();
+      if (screen != null) {
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(new java.io.File(getTargetContext().getExternalFilesDir(null), "smoke-screen.png"))) {
+          screen.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
+        }
+        screen.recycle();
       }
       result.putString(
           "stream",

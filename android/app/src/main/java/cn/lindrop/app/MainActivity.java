@@ -228,6 +228,7 @@ public final class MainActivity extends Activity implements Node.Ui {
             node = created;
             created.start();
           } catch (Exception e) {
+            android.util.Log.e("LinDrop", "Startup failed", e);
             status("启动失败：" + e.getMessage() + "。连接 Wi-Fi 后可在设置中重试。");
             if (node != null) {
               node.close();
