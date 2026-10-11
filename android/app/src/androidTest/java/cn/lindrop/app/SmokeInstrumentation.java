@@ -23,8 +23,12 @@ public class SmokeInstrumentation extends Instrumentation {
               startActivitySync(
                   new Intent(getTargetContext(), MainActivity.class)
                       .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-      long end = System.currentTimeMillis() + 30000;
-      while (activity.node == null && System.currentTimeMillis() < end) Thread.sleep(200);
+      long end = System.currentTimeMillis() + 60000;
+      int attempts = 0;
+      while (activity.node == null && System.currentTimeMillis() < end) {
+        Thread.sleep(1000);
+        if (++attempts % 5 == 0) runOnMainSync(activity::startNode);
+      }
       Node node = activity.node;
       if (node == null) {
         String[] status = {""};

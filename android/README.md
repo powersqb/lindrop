@@ -20,7 +20,7 @@ Java 原生界面，Android 8+，无第三方运行依赖。用户指定 Mate 80
 | 文件 | 职责 |
 | --- | --- |
 | MainActivity.java | 原生控件布局、系统文件选择/导出、确认对话框；UI 更新只在主线程 |
-| Identity.java | Android Keystore RSA 身份、TLS 服务端/客户端上下文 |
+| Identity.java | Android Keystore P-256 身份、TLS 服务端/客户端上下文 |
 | Protocol.java | 局域网、文件名、大小、文本校验及验证码 |
 | Wire.java | 限长 HTTP/1.1、TLS 证书精确 pin；无代理或重定向 |
 | Node.java | 发现、双向连接、信任、聊天和文件协议；后台线程与容量限制 |

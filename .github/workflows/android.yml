@@ -49,6 +49,13 @@ jobs:
           done
           test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = '1'
           adb shell input keyevent 82
+          adb shell svc wifi enable
+          for i in $(seq 1 45); do
+            if adb shell ip -4 addr show | grep -q 'inet 10\.'; then break; fi
+            sleep 2
+          done
+          adb shell ip -4 addr show > android-network.txt
+          grep -q 'inet 10\.' android-network.txt
       - name: Android UI, Keystore and TLS smoke test
         run: |
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
@@ -69,5 +76,6 @@ jobs:
             android/app/build/reports/
             android-smoke.txt
             android-logcat.txt
+            android-network.txt
             android-screen.png
             emulator.log
