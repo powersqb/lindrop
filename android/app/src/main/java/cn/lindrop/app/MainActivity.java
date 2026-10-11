@@ -521,7 +521,19 @@ public final class MainActivity extends Activity implements Node.Ui {
               }
               if (i == 2) rename();
               if (i == 3) forget();
-              if (i == 4) new AlertDialog.Builder(this).setTitle("邻传安卓 0.1.0").setMessage("本机："+local+"\n仅局域网直连；无后台公网访问。\n保持 App 打开，首次核对验证码。\n设备证书保存在 Android Keystore。\n接收文件可点击导出，保留原名和内容。").setPositiveButton("知道了",null).show();
+              if (i == 4)
+                new AlertDialog.Builder(this)
+                    .setTitle("邻传安卓 0.1.0")
+                    .setMessage(
+                        "本机："
+                            + local
+                            + "\n"
+                            + "仅局域网直连；无后台公网访问。\n"
+                            + "保持 App 打开，首次核对验证码。\n"
+                            + "设备证书保存在 Android Keystore。\n"
+                            + "接收文件可点击导出，保留原名和内容。")
+                    .setPositiveButton("知道了", null)
+                    .show();
             })
         .setNegativeButton("关闭", null)
         .show();

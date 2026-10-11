@@ -51,6 +51,7 @@ public final class Node implements AutoCloseable {
   volatile Offer receiving;
   volatile Socket sendingSocket;
   final AtomicBoolean cancelSend = new AtomicBoolean();
+  final Object chatConnectLock = new Object();
   SSLServerSocket listener;
   MulticastSocket multicast;
 
@@ -685,7 +686,15 @@ public final class Node implements AutoCloseable {
         });
   }
 
-  synchronized Outgoing connectChat(Protocol.Peer peer) throws Exception {
+  Outgoing connectChat(Protocol.Peer peer) throws Exception {
+    // Do not hold this Node's monitor while calling the remote node: reverse
+    // requests use the rate limiter's monitor and must remain able to run.
+    synchronized (chatConnectLock) {
+      return connectChatLocked(peer);
+    }
+  }
+
+  Outgoing connectChatLocked(Protocol.Peer peer) throws Exception {
     remembered(peer);
     Outgoing old = outgoing.get(peer.id);
     if (old != null && old.active && old.expiry > now()) return old;

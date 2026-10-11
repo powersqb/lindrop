@@ -285,7 +285,7 @@ def main():
         (args.output / "verification.json").write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        print(json.dumps(report, ensure_ascii=False))
+        print(json.dumps(report, ensure_ascii=True))
     finally:
         stop.set()
         desktop.close()

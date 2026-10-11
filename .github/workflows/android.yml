@@ -26,7 +26,8 @@ jobs:
           android/gradlew -p android --no-daemon assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug
       - name: Start Android 35 emulator
         run: |
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'emulator' 'system-images;android-35;default;x86_64'
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'emulator' 'system-images;android-35;default;x86_64'
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n lindrop -k 'system-images;android-35;default;x86_64' --force
           sudo chmod 666 /dev/kvm
           "$ANDROID_HOME/emulator/emulator" -avd lindrop -no-window -no-audio -no-snapshot -gpu swiftshader_indirect > emulator.log 2>&1 &
@@ -39,6 +40,7 @@ jobs:
           adb shell input keyevent 82
       - name: Android UI, Keystore and TLS smoke test
         run: |
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
           adb install -r android/app/build/outputs/apk/debug/app-debug.apk
           adb install -r android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           adb shell am instrument -w cn.lindrop.app.test/cn.lindrop.app.SmokeInstrumentation | tee android-smoke.txt
