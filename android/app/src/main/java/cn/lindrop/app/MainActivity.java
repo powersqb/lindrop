@@ -74,6 +74,10 @@ public final class MainActivity extends Activity implements Node.Ui {
     root.setPadding(dp(12), dp(10), dp(12), dp(8));
     root.setBackgroundColor(0xfff6f8f7);
     setContentView(root);
+    getWindow()
+        .getDecorView()
+        .setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
     // Target 35 draws edge-to-edge on Android 15: respect bars and keyboard insets.
     root.setOnApplyWindowInsetsListener(
         (v, insets) -> {
