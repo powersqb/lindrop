@@ -25,13 +25,24 @@ jobs:
           chmod +x android/gradlew
           android/gradlew -p android --no-daemon assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug
       - name: Start Android 35 emulator
+        timeout-minutes: 7
         run: |
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/lindrop-avd"
+          mkdir -p "$ANDROID_AVD_HOME"
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'emulator' 'system-images;android-35;default;x86_64'
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n lindrop -k 'system-images;android-35;default;x86_64' --force
           sudo chmod 666 /dev/kvm
+          adb start-server
           "$ANDROID_HOME/emulator/emulator" -avd lindrop -no-window -no-audio -no-snapshot -gpu swiftshader_indirect > emulator.log 2>&1 &
-          adb wait-for-device
+          EMULATOR_PID=$!
+          for i in $(seq 1 60); do
+            if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then cat emulator.log; exit 1; fi
+            if adb devices | grep -q 'emulator.*device'; then break; fi
+            sleep 2
+          done
+          timeout 60 adb wait-for-device || { cat emulator.log; exit 1; }
           for i in $(seq 1 120); do
             if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = '1' ]; then break; fi
             sleep 2
