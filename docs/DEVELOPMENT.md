@@ -19,7 +19,7 @@
 
 ## 在另一台开发电脑恢复
 
-先安装 Git、uv 和 Python 3.12.15（带 Tk），复制整个仓库或从自己建立的远程仓库 clone。开发时安装依赖需要联网；应用运行和文件传输只使用局域网。
+先安装 Git、uv 和 Python 3.12.15（带 Tk），复制整个仓库，或执行 `git clone https://github.com/powersqb/lindrop.git`。开发时安装依赖需要联网；聊天和文件传输只使用局域网；用户手动检查/下载更新访问 GitHub。
 
 ```powershell
 cd <你的邻传源码目录>
@@ -117,3 +117,7 @@ git push origin v0.5.0
 标签必须与源版本一致。`.github/workflows/windows.yml` 在 main/PR 上验证，在版本标签上验证后发布：固定的官方 Action 提交号 → uv 0.13.0 管理的 Python 3.12.15 → `uv sync --locked` → Ruff / pytest → EXE → 回环自检 → ZIP 与 SHA256SUMS → Releases。依赖的 Action 发布页和核对日期见 `actions-versions.json`。普通构建仅有 contents:read，只有标签发布 job 才有 contents:write；不需要在源码里存 PAT。Github Actions runner 的真实网卡/组播和第二台实体电脑不由回环自检覆盖。
 
 本机也可运行 `scripts/New-ReleasePackage.ps1` 打包，然后用 GitHub CLI `gh release create` 上传明确的 ZIP 与 SHA256SUMS，不把运行数据加入附件。首次建立远程与发布需要本人 GitHub 授权；连接 Codex 的 GitHub 工具与本机 CLI 登录不是同一份授权。
+
+云端使用 `windows-latest` 和 runner 自带 Git/OpenSSL，本机是 Windows 11 / OpenSSL 3.5.7；OS 与 OpenSSL 不做逐字节固定，EXE 构建摘要可不同。每次正式发布都需测试与 EXE 自检，客户端按该次官方附件摘要校验。
+
+若 Git 推送连接失败，检查系统代理。Git 可能不读取 Windows 系统代理，可用单次 `git -c http.proxy=<你的本机代理地址> push origin main`；不要把个人代理地址或授权令牌提交到仓库。
