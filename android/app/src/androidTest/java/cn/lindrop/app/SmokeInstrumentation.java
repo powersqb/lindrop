@@ -49,6 +49,33 @@ public class SmokeInstrumentation extends Instrumentation {
         throw new AssertionError("Wrong certificate pin accepted");
       } catch (SSLException expected) {
       }
+      java.io.File dir = new java.io.File(getTargetContext().getFilesDir(), "received-smoke");
+      if (!dir.isDirectory() && !dir.mkdirs()) throw new AssertionError("Storage unavailable");
+      java.io.File temp = new java.io.File(dir, ".receiving-test.part");
+      java.io.File target = new java.io.File(dir, "原名.txt");
+      byte[] bytes = {0, 1, 2, (byte) 255};
+      try {
+        java.nio.file.Files.write(temp.toPath(), bytes);
+        ReceivedFiles.commit(temp, target, false);
+        if (!java.util.Arrays.equals(bytes, java.nio.file.Files.readAllBytes(target.toPath())))
+          throw new AssertionError("Received content changed");
+        java.nio.file.Files.write(temp.toPath(), new byte[] {9});
+        try {
+          ReceivedFiles.commit(temp, target, false);
+          throw new AssertionError("Late collision overwritten");
+        } catch (java.io.IOException expected) {
+        }
+        if (!java.util.Arrays.equals(bytes, java.nio.file.Files.readAllBytes(target.toPath())))
+          throw new AssertionError("Original damaged after collision");
+        ReceivedFiles.commit(temp, target, true);
+        if (!java.util.Arrays.equals(
+            new byte[] {9}, java.nio.file.Files.readAllBytes(target.toPath())))
+          throw new AssertionError("Overwrite failed");
+      } finally {
+        temp.delete();
+        target.delete();
+        dir.delete();
+      }
       waitForIdleSync();
       android.graphics.Bitmap screen = getUiAutomation().takeScreenshot();
       if (screen != null) {
@@ -63,7 +90,7 @@ public class SmokeInstrumentation extends Instrumentation {
       result.putString(
           "stream",
           "ANDROID_SMOKE_OK: UI, Android Keystore persistence, TLS server/client, wrong-pin"
-              + " rejection\n");
+              + " rejection, original-name receive commit and collision protection\n");
       finish(-1, result);
     } catch (Throwable error) {
       result.putString("stream", "ANDROID_SMOKE_FAILED: " + error + "\n");

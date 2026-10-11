@@ -585,18 +585,7 @@ public final class Node implements AutoCloseable {
       synchronized (o) {
         if (!o.status.equals("accepted") || o.expiry < now()) throw new IOException("接收已取消");
         File target = new File(received, Protocol.name(f.getString("name")));
-        if (target.exists() && !o.overwrite) throw new IOException("出现同名文件，请重新确认");
-        // Same-volume atomic replacement; no filename prefix or content transformation.
-        if (o.overwrite)
-          Files.move(
-              temp.toPath(),
-              target.toPath(),
-              StandardCopyOption.ATOMIC_MOVE,
-              StandardCopyOption.REPLACE_EXISTING);
-        else {
-          Files.createLink(target.toPath(), temp.toPath());
-          Files.delete(temp.toPath());
-        }
+        ReceivedFiles.commit(temp, target, o.overwrite);
         temp = null;
         o.complete.add(index);
         if (o.complete.size() == o.files.length()) {
@@ -612,6 +601,7 @@ public final class Node implements AutoCloseable {
         o.socket = null;
       }
       abort(o);
+      ui.status("接收失败：" + e.getMessage());
       throw e;
     } finally {
       if (temp != null) temp.delete();

@@ -101,6 +101,9 @@ public final class MainActivity extends Activity implements Node.Ui {
     heading.setTextSize(24);
     heading.setTypeface(null, android.graphics.Typeface.BOLD);
     title.addView(heading, new LinearLayout.LayoutParams(0, dp(44), 1));
+    Button received = button("收到的文件");
+    title.addView(received);
+    received.setOnClickListener(v -> received());
     Button settings = button("设置");
     title.addView(settings);
     settings.setOnClickListener(v -> settings());
@@ -166,9 +169,6 @@ public final class MainActivity extends Activity implements Node.Ui {
     files = button("发文件");
     tools.addView(files, new LinearLayout.LayoutParams(0, -2, 1));
     files.setOnClickListener(v -> pick());
-    Button received = button("接收文件");
-    tools.addView(received, new LinearLayout.LayoutParams(0, -2, 1));
-    received.setOnClickListener(v -> received());
     Button cancel = button("取消传输");
     tools.addView(cancel, new LinearLayout.LayoutParams(0, -2, 1));
     cancel.setOnClickListener(
@@ -494,13 +494,17 @@ public final class MainActivity extends Activity implements Node.Ui {
     File dir = new File(getFilesDir(), "received");
     File[] list = dir.listFiles(f -> f.isFile() && !f.getName().startsWith(".receiving-"));
     if (list == null || list.length == 0) {
-      status("还没有接收文件");
+      new AlertDialog.Builder(this)
+          .setTitle("收到的文件")
+          .setMessage("暂无已成功保存的文件。接收失败或取消的文件不会出现在这里。\n收到后点击文件，可按原名导出到手机文件管理。")
+          .setPositiveButton("知道了", null)
+          .show();
       return;
     }
     Arrays.sort(list, Comparator.comparingLong(File::lastModified).reversed());
     String[] names = Arrays.stream(list).map(File::getName).toArray(String[]::new);
     new AlertDialog.Builder(this)
-        .setTitle("接收文件 · 点击导出原文件")
+        .setTitle("收到的文件 · 点击保存到手机")
         .setItems(
             names,
             (d, i) -> {
@@ -518,9 +522,9 @@ public final class MainActivity extends Activity implements Node.Ui {
   void settings() {
     String local = node == null ? "未连接" : node.host + ":" + node.port;
     new AlertDialog.Builder(this)
-        .setTitle("邻传安卓 0.1.0 · 测试版")
+        .setTitle("邻传安卓 0.1.1 · 测试版")
         .setItems(
-            new String[] {"手动连接电脑", "重试网络连接", "修改设备名", "移除设备信任", "关于与使用说明"},
+            new String[] {"手动连接电脑", "重试网络连接", "修改设备名", "移除设备信任", "关于与使用说明", "收到的文件"},
             (d, i) -> {
               if (i == 0) manual();
               if (i == 1) {
@@ -531,9 +535,10 @@ public final class MainActivity extends Activity implements Node.Ui {
               }
               if (i == 2) rename();
               if (i == 3) forget();
+              if (i == 5) received();
               if (i == 4)
                 new AlertDialog.Builder(this)
-                    .setTitle("邻传安卓 0.1.0")
+                    .setTitle("邻传安卓 0.1.1")
                     .setMessage(
                         "本机："
                             + local
