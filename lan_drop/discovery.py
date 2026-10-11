@@ -33,6 +33,7 @@ class Peer:
     port: int
     fingerprint: str
     seen: float
+    presence: bool = False
 
 
 def parse_beacon(data: bytes, host: str) -> Peer:
@@ -52,8 +53,20 @@ def parse_beacon(data: bytes, host: str) -> Peer:
         or not 1024 <= port <= 65535
     ):
         raise ValueError("无效设备信息")
+    capable = value.get("presence") is True
+    if capable and "host" in value:
+        advertised = value["host"]
+        if not isinstance(advertised, str) or not is_lan(advertised):
+            raise ValueError("无效设备监听地址")
+        host = advertised  # Still untrusted: every subsequent TLS connection checks the pin.
     return Peer(
-        identifier, device_name(value.get("name")), host, port, fingerprint, time.monotonic()
+        identifier,
+        device_name(value.get("name")),
+        host,
+        port,
+        fingerprint,
+        time.monotonic(),
+        capable,
     )
 
 
@@ -113,7 +126,10 @@ class Discovery:
                 next_beacon = time.monotonic() + 2
             try:
                 packet, source = self.socket.recvfrom(1501)
-                self.remember(parse_beacon(packet, source[0]))
+                peer = parse_beacon(packet, source[0])
+                self.remember(peer)
+                if peer.id != self.identity()["id"] and peer.presence:
+                    self.event("presence_beacon", peer=peer)
             except (ValueError, UnicodeError, socket.timeout):
                 pass
             except OSError:

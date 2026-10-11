@@ -272,6 +272,8 @@ class PeerProtocol:
                 raise ValueError("无效控制消息")
             if path.startswith("/peer/chat/"):
                 self.node.chat.post(handler, path, payload)
+            elif path == "/peer/presence":
+                self.node.presence.accept(handler, payload)
             elif path == "/peer/offer":
                 self.offer(handler, payload)
             elif path.startswith("/peer/cancel/"):
@@ -490,6 +492,9 @@ class PeerNode:
         from .chat import ChatProtocol
 
         self.chat = ChatProtocol(self)
+        from .presence import Presence
+
+        self.presence = Presence(self)
         self.server.peer_protocol = self.protocol
         self.discovery = None
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
@@ -501,6 +506,8 @@ class PeerNode:
 
     def identity(self):
         return {
+            "host": self.host,
+            "presence": True,
             "id": self.id,
             "name": self.name,
             "port": self.port,
@@ -508,9 +515,14 @@ class PeerNode:
         }
 
     def as_peer(self):
-        return Peer(self.id, self.name, self.host, self.port, self.fingerprint, time.monotonic())
+        return Peer(
+            self.id, self.name, self.host, self.port, self.fingerprint, time.monotonic(), True
+        )
 
     def emit(self, kind, **payload):
+        if kind == "presence_beacon":
+            self.presence.submit(payload["peer"])
+            return
         self.events.put({"kind": kind, **payload})
 
     def close(self):

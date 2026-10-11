@@ -100,6 +100,12 @@ public final class JvmHarness {
         String action = cmd.getString("action");
         if (action.equals("close")) break;
         Protocol.Peer peer = new Protocol.Peer(cmd.getJSONObject("peer"), "127.0.0.1");
+        if (action.equals("presence-status"))
+          event(
+              new JSONObject()
+                  .put("event", "presence-status")
+                  .put("discovered", node.peers.containsKey(peer.id))
+                  .put("trusted", pins.containsKey(peer.id)));
         if (action.equals("chat")) node.sendChat(peer, cmd.getString("text"));
         if (action.equals("files"))
           node.sendFiles(

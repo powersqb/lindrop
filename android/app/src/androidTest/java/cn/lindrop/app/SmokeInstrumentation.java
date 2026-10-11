@@ -94,6 +94,39 @@ public class SmokeInstrumentation extends Instrumentation {
       } finally {
         restored.close();
       }
+      Node announcer =
+          new Node(
+              second.server,
+              second.client,
+              "c".repeat(32),
+              second.fingerprint,
+              node.host,
+              "首次自动发现测试",
+              new java.io.File(getTargetContext().getFilesDir(), "presence-test"),
+              restored.trust,
+              restored.ui);
+      try {
+        announcer.start();
+        announcer.multicast.close();
+        node.peers.remove(announcer.id);
+        JSONObject reply =
+            Wire.request(
+                second.client,
+                self,
+                node.host,
+                "POST",
+                "/peer/presence",
+                announcer.identity().put("app", "lindrop").put("protocol", 2),
+                null);
+        if (!reply.optBoolean("discovered") || !node.peers.containsKey(announcer.id))
+          throw new AssertionError("First TLS presence discovery failed");
+        if (node.trust.get(announcer.id) != null)
+          throw new AssertionError("Presence automatically trusted a new device");
+      } finally {
+        announcer.close();
+        node.peers.remove(announcer.id);
+        activity.peers(new java.util.ArrayList<>(node.peers.values()));
+      }
       Protocol.Peer wrong =
           new Protocol.Peer(node.identity().put("fingerprint", "0".repeat(64)), node.host);
       try (SSLSocket ignored = Wire.connect(second.client, wrong, node.host)) {

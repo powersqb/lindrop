@@ -9,40 +9,23 @@
     "wrong certificate pin blocked",
     "corrupt overwrite preserves existing file",
     "cancel blocks subsequent upload",
-    "remembered Android initiated chat and polling reply"
+    "remembered Android initiated chat and polling reply",
+    "First TLS presence reply discovers PC before any trust is saved"
   ],
-  "android_runtime_verified": true,
+  "android_runtime_verified": false,
   "mate80_verified": false,
-  "version": "0.1.2",
-  "version_code": 3,
+  "version": "0.1.3",
+  "version_code": 4,
   "local_unit_tests_passed": 10,
   "lint_errors": 0,
   "lint_warnings": 7,
-  "apk_bytes": 49328,
-  "apk_sha256": "059fef5886b5a56abcaecdd6c310784a8b4691cda59607ba2b0e425e3e401a00",
-  "apk_signature": "v2, same signer as 0.1.1",
-  "changes": [
-    "Persist up to 16 human-verified LAN endpoints",
-    "On startup and every 5 seconds, bounded background pinned TLS hello probes; show only matching device ID and certificate",
-    "Remove offline cached endpoints from online list; forget also removes cached address",
-    "Peer expiry timestamps consistently use milliseconds"
-  ],
+  "apk_bytes": 49796,
+  "apk_sha256": "0f2296b1fd79d64560502e5fb5ba3face6f8de769a88449811ea8461f4dae841",
+  "apk_signature": "same personal signer as 0.1.2",
+  "android_runtime_status": "pending",
+  "previous_validation": "validation/android-0.1.2.json",
   "mate80_feedback": {
-    "0.1.1": "User confirmed PC-to-phone receive now works; automatic multicast discovery still fails",
-    "0.1.2": "Pending user restart/automatic find retest; one manual connection needed to seed cache after upgrade, manual refresh needed after PC IP/port changes"
-  },
-  "previous_validation": "validation/android-0.1.1.json",
-  "android_runtime_status": "success",
-  "source_commit": "bc89d09b3d5e553530595dfe3b1e71be6b80536b",
-  "android_runtime_run": 38139367957,
-  "android_runtime_checks": [
-    "Android 35 UI, Keystore, TLS and wrong pin rejection",
-    "Original-name receive commit and collision protection",
-    "Restore previously saved endpoint in new Node, verify pinned TLS and device ID, then show online without manual input",
-    "Same certificate but wrong device ID rejected; no auto trust or confirmation"
-  ],
-  "windows_ci_run": 38139367947,
-  "windows_ci_status": "success",
-  "release_url": "https://github.com/powersqb/lindrop/releases/tag/android-v0.1.2",
-  "release_tag": "android-v0.1.2"
+    "previous": "User confirms receiving files; first automatic discovery still fails",
+    "current": "0.1.3 first discovery pending real-device retest"
+  }
 }

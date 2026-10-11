@@ -1,0 +1,49 @@
+{
+  "version": "0.6.1",
+  "date": "2026-10-11",
+  "tests": {
+    "pytest_passed": 68,
+    "ruff_check": "passed",
+    "ruff_format": "passed"
+  },
+  "packaged_selftest": {
+    "ok": true,
+    "version": "0.6.1",
+    "checks": [
+      "bundled Tk and native TkDnD startup",
+      "certificate pin mismatch blocked before control request",
+      "one-time identity comparison, receiver acceptance and bidirectional HTTPS transfer",
+      "remembered devices connect automatically for bidirectional encrypted Unicode chat"
+    ],
+    "discovery": "not tested: no LAN adapter",
+    "sha256": "87d9ec463e59ead4ee43afe9e6848ec630bd35c2de3d9b7a535ed6479a740ece"
+  },
+  "exe_bytes": 16709590,
+  "exe_sha256": "6149a7ffc5f06c86114faf7e250b384f30621e9a1ea7678c07705395453ae56f",
+  "regression": "Incoming phone chat verifies reverse TLS endpoint; rewritten UDP beacon points to PC itself; PC sends original-name file to verified phone endpoint successfully. Cancelled sessions do not refresh endpoint.",
+  "real_phone": {
+    "user_confirmed": [
+      "Mate 80 HarmonyOS 7 APK install/start",
+      "manual phone-to-PC connection",
+      "text chat",
+      "phone-to-PC original-name file receipt"
+    ],
+    "diagnostic_confirmed": "Phone UDP source is rewritten to PC IPv4. Direct TLS to phone matches beacon pin; GET /peer/hello succeeds. Cause of UDP rewriting not determined.",
+    "pending": [
+      "PC-to-phone file after Windows 0.6.1 update",
+      "Android automatic discovery",
+      "background/lockscreen operation"
+    ]
+  },
+  "publication": {
+    "tag": "v0.6.1",
+    "source_commit": "b4182ebbc7ae9cf0133679084e1b66fc7686b11a",
+    "ci_run": 38136322623,
+    "ci_status": "success",
+    "release_url": "https://github.com/powersqb/lindrop/releases/tag/v0.6.1",
+    "download_verified_sha256": "da3fcaacb30b838d96cafc0c620c2ea477b6a6d8e493716ab3faa4dcd871ba27",
+    "latest_update_api": "v0.6.1",
+    "running_user_exe": "0.6.0; user triggers install and restart"
+  },
+  "previous_verification": "validation/windows-0.6.0.json"
+}

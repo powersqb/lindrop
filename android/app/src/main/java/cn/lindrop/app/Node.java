@@ -53,6 +53,7 @@ public final class Node implements AutoCloseable {
   final Map<String, Outgoing> outgoing = new ConcurrentHashMap<>();
   final Map<String, Offer> offers = new ConcurrentHashMap<>();
   final Map<String, Deque<Long>> attempts = new HashMap<>();
+  final Map<String, Long> presenceAttempts = new HashMap<>();
   final Set<Socket> sockets = ConcurrentHashMap.newKeySet();
   final ExecutorService actions = Executors.newFixedThreadPool(4);
   final ThreadPoolExecutor handlers =
@@ -128,6 +129,8 @@ public final class Node implements AutoCloseable {
   public JSONObject identity() throws JSONException {
     return new JSONObject()
         .put("id", id)
+        .put("host", host)
+        .put("presence", true)
         .put("name", name)
         .put("port", port)
         .put("fingerprint", fp);
@@ -185,6 +188,7 @@ public final class Node implements AutoCloseable {
       multicast.setReuseAddress(true);
       multicast.bind(new InetSocketAddress(Protocol.DISCOVERY_PORT));
       multicast.setTimeToLive(1);
+      multicast.setBroadcast(true);
       multicast.setSoTimeout(1000);
       NetworkInterface network = NetworkInterface.getByInetAddress(InetAddress.getByName(host));
       multicast.setNetworkInterface(network);
@@ -226,6 +230,12 @@ public final class Node implements AutoCloseable {
               multicast.send(
                   new DatagramPacket(
                       b, b.length, InetAddress.getByName(Protocol.GROUP), Protocol.DISCOVERY_PORT));
+              multicast.send(
+                  new DatagramPacket(
+                      b,
+                      b.length,
+                      InetAddress.getByName("255.255.255.255"),
+                      Protocol.DISCOVERY_PORT));
             } catch (Exception e) {
               if (!closed) ui.status("发现受限，可尝试手动连接");
             }
@@ -256,7 +266,7 @@ public final class Node implements AutoCloseable {
         1,
         TimeUnit.SECONDS);
     startSaved();
-    ui.status("在线 · " + host + ":" + port + " · 安卓 0.1.2");
+    ui.status("在线 · " + host + ":" + port + " · 安卓 0.1.3");
   }
 
   void startSaved() {
@@ -331,6 +341,8 @@ public final class Node implements AutoCloseable {
     remembered(p);
     JSONObject hello = request(p, "GET", "/peer/hello", null, null);
     if (!hello.optString("id").equals(p.id)
+        || !Protocol.equal(hello.optString("fingerprint"), p.fp)
+        || hello.optInt("port") != p.port
         || hello.optInt("protocol") != 2
         || (chat && !hello.optBoolean("chat"))) throw new IOException("设备身份或协议不一致");
     return new Protocol.Peer(hello, ip);
@@ -413,6 +425,26 @@ public final class Node implements AutoCloseable {
           .put("protocol", 2)
           .put("chat", true)
           .put("remembered_chat", true);
+    if (method.equals("POST") && path.equals("/peer/presence")) {
+      synchronized (presenceAttempts) {
+        long t = now();
+        presenceAttempts.entrySet().removeIf(e -> t - e.getValue() > 60000);
+        if (t - presenceAttempts.getOrDefault(ip, -60000L) < 2000
+            || (!presenceAttempts.containsKey(ip) && presenceAttempts.size() >= 128))
+          throw new IOException("设备发现请求过于频繁");
+        presenceAttempts.put(ip, t);
+      }
+      if (!data.optString("app").equals("lindrop") || data.optInt("protocol") != 2)
+        throw new IOException("设备发现协议无效");
+      Protocol.Peer peer = reverse(data, ip, false);
+      if (peers.size() >= 128 && !peers.containsKey(peer.id)) throw new IOException("设备数量已达上限");
+      if (!peer.id.equals(id)) {
+        peers.put(peer.id, peer);
+        if (remembered(peer)) track(peer);
+        ui.peers(new ArrayList<>(peers.values()));
+      }
+      return new JSONObject().put("id", id).put("discovered", true);
+    }
     if (method.equals("POST") && path.equals("/peer/chat/offer")) {
       rate(ip);
       nonce(data);

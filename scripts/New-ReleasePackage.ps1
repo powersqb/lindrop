@@ -29,7 +29,7 @@ try {
     $taskZipHash = (Get-FileHash -LiteralPath $taskZip -Algorithm SHA256).Hash.ToLowerInvariant()
     $taskExeHash = (Get-FileHash -LiteralPath $ExePath -Algorithm SHA256).Hash.ToLowerInvariant()
     "$taskZipHash  $(Split-Path $taskZip -Leaf)`n$taskExeHash  邻传.exe" | Set-Content -LiteralPath (Join-Path $OutputDirectory 'SHA256SUMS.txt') -Encoding utf8
-    $taskNotes = "邻传 $taskVersion：修复桥接网络改写手机广播地址时电脑向手机发送文件误报证书变化，使用已验证的在线聊天地址，仍严格校验证书。局域网在线直聊、原生多文件拖拽和加密文件传输。首次核对记住设备，以后无需开始/结束聊天；文件仅接收方确认，可拒绝或中途取消。`n`n设置 → 软件更新 · GitHub：手动检查并下载 SHA-256 校验后的发布包，点击安装并重启自动替换 EXE，保留数据和设备信任。0.5.0 及更早版本需首次手动升级；接收文件保留原名，同名由接收方选择覆盖、另存或取消。`n`n固定名 lindrop-windows-x64.zip，更新始终使用原 EXE 路径；新饱满图标和启动授权窗口关闭后恢复界面。Windows x64 便携版，免安装。第二台物理电脑仍待验证。"
+    $taskNotes = "邻传 $taskVersion：新增与 Android 0.1.3 的首次自动发现。广播携带实际监听地址，电脑经校验证书的 TLS 回送设备信息，手机反向验证后显示电脑，无需手动输入。首次仍核对验证码，不自动建立信任。局域网在线直聊、原生多文件拖拽和加密文件传输。首次核对记住设备，以后无需开始/结束聊天；文件仅接收方确认，可拒绝或中途取消。`n`n设置 → 软件更新 · GitHub：手动检查并下载 SHA-256 校验后的发布包，点击安装并重启自动替换 EXE，保留数据和设备信任。0.5.0 及更早版本需首次手动升级；接收文件保留原名，同名由接收方选择覆盖、另存或取消。`n`n固定名 lindrop-windows-x64.zip，更新始终使用原 EXE 路径；新饱满图标和启动授权窗口关闭后恢复界面。Windows x64 便携版，免安装。第二台物理电脑仍待验证。"
     $taskNotes | Set-Content -LiteralPath (Join-Path $OutputDirectory 'release-notes.md') -Encoding utf8
     Write-Output $taskZip
 } finally { Pop-Location }

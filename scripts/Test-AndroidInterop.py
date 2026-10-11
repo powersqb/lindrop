@@ -154,6 +154,15 @@ def main():
         threading.Thread(target=read_java, daemon=True).start()
         ready = java_until(lambda e: e["event"] == "ready")
         peer = desktop.manual_peer("127.0.0.1", ready["port"])
+        desktop.presence.submit(__import__("dataclasses").replace(peer, presence=True))
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            command(action="presence-status", peer=desktop.identity())
+            presence = java_until(lambda e: e["event"] == "presence-status")
+            if presence["discovered"]:
+                break
+            time.sleep(0.2)
+        assert presence["discovered"] and not presence["trusted"], "Presence must not auto-trust"
         channel = desktop.begin(peer, [], chat=True, automatic=True)
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:

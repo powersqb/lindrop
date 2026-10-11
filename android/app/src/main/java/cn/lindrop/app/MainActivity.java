@@ -548,7 +548,7 @@ public final class MainActivity extends Activity implements Node.Ui {
   void settings() {
     String local = node == null ? "未连接" : node.host + ":" + node.port;
     new AlertDialog.Builder(this)
-        .setTitle("邻传安卓 0.1.2 · 测试版")
+        .setTitle("邻传安卓 0.1.3 · 测试版")
         .setItems(
             new String[] {"手动连接电脑", "重试网络连接", "修改设备名", "移除设备信任", "关于与使用说明", "收到的文件"},
             (d, i) -> {
@@ -564,7 +564,7 @@ public final class MainActivity extends Activity implements Node.Ui {
               if (i == 5) received();
               if (i == 4)
                 new AlertDialog.Builder(this)
-                    .setTitle("邻传安卓 0.1.2")
+                    .setTitle("邻传安卓 0.1.3")
                     .setMessage(
                         "本机："
                             + local

@@ -450,6 +450,7 @@ class Desktop(ChatUI, UpdateUI):
         if not self.node:
             return
         peers = self.node.discovery.snapshot() if self.node.discovery else []
+        peers.extend(self.node.presence.snapshot())
         now = time.monotonic()
         # A LAN bridge can rewrite UDP sources. An active chat's endpoint was
         # reverse-verified over pinned TLS; retain it instead of reconnecting to
