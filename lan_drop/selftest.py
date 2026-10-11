@@ -62,7 +62,9 @@ def run(directory: Path, host=None):
             offer = sender.begin(receiver.as_peer(), files)
             assert not list(receiver.received.iterdir())
             assert offer["code"] == receiver.protocol.offers[offer["id"]].code
-            # Test-only simulated user acceptance; the normal UI requires both users.
+            # Test-only first-use identity comparison and receiver file acceptance.
+            sender.trust.remember(receiver.as_peer())
+            receiver.trust.remember(sender.as_peer())
             receiver.protocol.decide(offer["id"], True)
             token = sender.wait_accepted(receiver.as_peer(), offer, threading.Event())
             sender.send_file(
@@ -79,13 +81,13 @@ def run(directory: Path, host=None):
             assert len(saved) == 1 and saved[0].read_bytes() == payload
             assert receiver.protocol.offers[offer["id"]].status == "complete"
         report["checks"].append(
-            "matching verification codes, explicit acceptance and bidirectional HTTPS transfer"
+            "one-time identity comparison, receiver acceptance and bidirectional HTTPS transfer"
         )
         import secrets
 
-        offer = a.begin(b.as_peer(), [], chat=True)
+        offer = a.begin(b.as_peer(), [], chat=True, automatic=True)
         assert b.chat.channels[offer["id"]].code == offer["code"]
-        b.chat.decide(offer["id"], True)
+        assert b.chat.channels[offer["id"]].status == "accepted"
         peer_request(
             b.as_peer(), "POST", f"/peer/chat/{offer['id']}/activate", {}, offer["secret"], a.host
         )
@@ -102,7 +104,9 @@ def run(directory: Path, host=None):
             b.as_peer(), "GET", f"/peer/chat/{offer['id']}/0", secret=offer["secret"], source=a.host
         )
         assert [m["text"] for m in reply["messages"]] == ["中文聊天 hello", "收到"]
-        report["checks"].append("accepted bidirectional encrypted Unicode chat")
+        report["checks"].append(
+            "remembered devices connect automatically for bidirectional encrypted Unicode chat"
+        )
         report["sha256"] = hashlib.sha256(payload).hexdigest()
         report["ok"] = True
     except Exception:

@@ -171,6 +171,37 @@ def test_metadata_validation_and_code_binding():
         assert comparison_code(*changed) != original
 
 
+def test_receiver_can_cancel_stalled_upload_immediately(nodes, tmp_path):
+    a, b = nodes
+    source = tmp_path / "stalled.bin"
+    source.write_bytes(b"X" * 10000)
+    offer, _ = prepare(a, b, [source])
+    b.protocol.decide(offer["id"], True)
+    token = a.wait_accepted(b.as_peer(), offer, threading.Event())
+    connection = PinnedConnection(b.as_peer(), a.host)
+    try:
+        connection.connect()
+        connection.sock.sendall(
+            (
+                f"POST /peer/upload/{offer['id']}/0 HTTP/1.1\r\nHost: {b.server.authority}\r\n"
+                f"Origin: {b.server.origin}\r\nX-Transfer-Token: {token}\r\n"
+                "Content-Length: 10000\r\n\r\nshort"
+            ).encode()
+        )
+        deadline = time.monotonic() + 3
+        while not list(b.received.glob("*.part")) and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert list(b.received.glob("*.part"))
+        b.protocol.abort(offer["id"])
+        while list(b.received.iterdir()) and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert not list(b.received.iterdir())
+        assert b.protocol.offers[offer["id"]].token == ""
+        assert b.protocol.offers[offer["id"]].status == "cancelled"
+    finally:
+        connection.close()
+
+
 def test_discovery_only_accepts_app_beacons_and_expires():
     identity = {"id": "a" * 32, "name": "邻传设备", "port": 8765, "fingerprint": "b" * 64}
     beacon = {"app": "lindrop", "protocol": 2, **identity}

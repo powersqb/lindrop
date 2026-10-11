@@ -1,98 +1,51 @@
 {
-  "version": "0.4.1",
+  "version": "0.5.0",
   "date": "2026-10-11",
   "source_repository": "apps/lindrop",
-  "release_tag": "v0.4.1",
-  "baseline_tag": "v0.2.0",
+  "release_tag": "v0.5.0",
   "runtime": "Windows x64 / Python 3.12.15 / Tk",
-  "exe": "outputs\\邻传\\邻传.exe",
-  "exe_bytes": 16608848,
-  "exe_sha256": "a3da018464aeb56fe24e52dc17c199503d6c0fdb393d460b1dc11967d9124ba7",
-  "zip": "outputs/邻传-0.4.1-Windows.zip",
+  "exe": "outputs/邻传/邻传.exe",
+  "exe_bytes": 16661115,
+  "exe_sha256": "378481ef0fa2c9029dcad14438597f2f79b1f3686ce3f3c9c283934bde1bfc98",
+  "local_zip": "outputs/release-050-local/lindrop-v0.5.0-windows-x64.zip",
   "app_tests": {
-    "passed": 42,
-    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/tests-04-final",
-    "version": "0.4.0 local (same updater implementation)"
+    "passed": 46,
+    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/tests-05-release-final"
   },
   "engineering_tests": {
     "passed": 20,
-    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/engineering-tests-04-default",
-    "scope": "root project only; pytest testpaths excludes independent app environment"
+    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/engineering-tests-050-final"
   },
   "ruff": "check and format --check passed",
   "packaged_selftest": {
     "ok": true,
-    "version": "0.4.1",
+    "version": "0.5.0",
     "checks": [
       "bundled Tk and native TkDnD startup",
       "real LAN multicast discovery between two local app instances",
       "certificate pin mismatch blocked before control request",
-      "matching verification codes, explicit acceptance and bidirectional HTTPS transfer",
-      "accepted bidirectional encrypted Unicode chat"
+      "one-time identity comparison, receiver acceptance and bidirectional HTTPS transfer",
+      "remembered devices connect automatically for bidirectional encrypted Unicode chat"
     ],
     "sha256": "87d9ec463e59ead4ee43afe9e6848ec630bd35c2de3d9b7a535ed6479a740ece"
   },
-  "native_drag_test": {
-    "native_drop_received": true,
-    "file": "拖拽 测试文件.txt",
-    "status": "pending",
-    "saved_files": 0,
-    "scope": "0.3.0 native drag validation; drag implementation unchanged in 0.4.0"
+  "ui": {
+    "screenshot": "docs/assets/desktop-0.5.0.png",
+    "verified": "Windows EXE 720x580 inspected; Tk test checks composer immediately below transcript and above file tools at 640x520"
   },
-  "ui": "0.4.0 Tk tests verify compact main window and manual update dialog at 420x320; opening dialog sends no request",
+  "interaction_tests": [
+    "simultaneous first messages require one matching human comparison, never send unconfirmed text",
+    "device ID, certificate pin and trust survive process restart; known devices reconnect without verification dialogs",
+    "first-file identity verification then receiver-only acceptance; subsequent rejection saves no extra files",
+    "receiver cancellation interrupts a stalled upload and cleans temporary files",
+    "changed known certificate pin blocks connection; explicit forget removes authorization"
+  ],
   "second_physical_computer": "pending",
-  "dependencies": {
-    "tkinterdnd2": {
-      "version": "0.6.3",
-      "verified": "2026-10-11",
-      "source": "https://pypi.org/project/tkinterdnd2/"
-    },
-    "pyinstaller": {
-      "version": "6.22.3",
-      "verified": "2026-10-11",
-      "source": "https://pypi.org/project/pyinstaller/"
-    },
-    "openssl": {
-      "current": "3.5.7",
-      "latest": "待核实",
-      "scope": "3.5.7 local build environment; cloud EXE uses runner Git OpenSSL runtime, not pinned to local version"
-    }
-  },
-  "privacy": "LAN chat/files without relay; GitHub HTTPS only for manual update check/download; no telemetry",
   "github": {
     "repository": "https://github.com/powersqb/lindrop",
-    "visibility": "PUBLIC verified",
-    "release": "https://github.com/powersqb/lindrop/releases/tag/v0.4.1",
-    "release_tag_commit": "571d9eb",
-    "ci_run": "https://github.com/powersqb/lindrop/actions/runs/38111544561",
-    "ci_conclusion": "success",
-    "ci_tests": {
-      "passed": 41,
-      "skipped": 1,
-      "skip_reason": "real multicast discovery needs LAN adapter; verified locally with published EXE"
-    },
-    "initial_0_4_0_ci": "failed before tests: actions/setup-python lacks Windows Python 3.12.15; corrected in 0.4.1 via uv-managed runtime; old tag retained"
+    "visibility": "PUBLIC",
+    "release": "https://github.com/powersqb/lindrop/releases/tag/v0.5.0",
+    "status": "local verification complete; release push and CI pending"
   },
-  "packaged_loopback_selftest": {
-    "version": "0.4.1",
-    "ok": true,
-    "evidence": "https://github.com/powersqb/lindrop/actions/runs/38111544561",
-    "scope": "CI packaged runtime, certificate pinning and bidirectional chat/files; LAN multicast not included"
-  },
-  "update_tests": "public unauthenticated API check + verified ZIP download passed; downloaded published EXE passed local real-LAN self-test",
-  "live_update": {
-    "current_simulated": "0.4.0",
-    "latest": "0.4.1",
-    "upgrade_available": true,
-    "release_url": "https://github.com/powersqb/lindrop/releases/tag/v0.4.1",
-    "filename": "lindrop-v0.4.1-windows-x64.zip",
-    "size": 16323910,
-    "sha256": "ab1c9d9fd367c429c8964c700052ae79cbdfd25ce0a1fb4681c3f36ec659d05c",
-    "digest_matches": true,
-    "zip_entries": [
-      "邻传.exe",
-      "README.md",
-      "使用说明.md"
-    ]
-  }
+  "privacy": "LAN HTTPS with persistent verified pins; chat only in memory; no relay/telemetry; GitHub connections only for manual updates"
 }

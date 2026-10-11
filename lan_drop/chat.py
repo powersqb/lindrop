@@ -30,6 +30,7 @@ class Channel:
     peer: Peer
     code: str
     expires: float
+    automatic: bool = False
     status: str = "pending"
     messages: deque = field(default_factory=lambda: deque(maxlen=200))
     sequence: int = 0
@@ -55,6 +56,8 @@ class ChatProtocol:
             channel = self.channels.get(identifier)
             if not channel or channel.status != "pending" or channel.expires < time.monotonic():
                 raise ValueError("聊天请求已过期")
+            if accepted:
+                self.node.trust.remember(channel.peer)
             channel.status = "accepted" if accepted else "rejected"
             channel.expires = time.monotonic() + (3600 if accepted else 10)
             return channel
@@ -187,6 +190,7 @@ class ChatProtocol:
         ):
             raise ValueError("聊天设备信息无效")
         peer = Peer(identifier, "待验证", ip, port, fingerprint, now)
+        remembered = self.node.trust.check(peer)
         hello = peer_request(peer, "GET", "/peer/hello", source=self.node.host, timeout=3)
         if hello.get("id") != identifier or not hello.get("chat"):
             raise ValueError("对方不支持聊天，请升级邻传")
@@ -198,7 +202,11 @@ class ChatProtocol:
             peer,
             comparison_code(fingerprint, self.node.fingerprint, nonce, cid),
             now + 120,
+            automatic=payload.get("automatic") is True,
         )
+        if channel.automatic and remembered:
+            channel.status = "accepted"
+            channel.expires = now + 3600
         with self.lock:
             if (
                 self.node.closed.is_set()

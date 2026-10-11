@@ -8,3 +8,10 @@ outputs/
 .pytest_cache/
 .ruff_cache/
 *.spec
+# Runtime identity/trust files must never enter source history, even with --data-dir.
+private-key.pem
+certificate.pem
+trusted-devices.json
+device-id
+profile.json
+openssl.cnf

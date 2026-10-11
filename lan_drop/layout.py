@@ -78,8 +78,6 @@ def build(app, args):
     ttk.Label(
         heading, textvariable=app.target, font=("Microsoft YaHei", 10, "bold"), wraplength=280
     ).pack(side="left")
-    app.chat_button = ttk.Button(heading, text="开始聊天", command=app.chat_toggle)
-    app.chat_button.pack(side="right")
     transcript_frame = ttk.Frame(right)
     transcript_frame.pack(fill="both", expand=True)
     app.transcript = tk.Text(
@@ -105,9 +103,22 @@ def build(app, args):
     app.transcript.configure(state="normal")
     app.transcript.insert(
         "end",
-        "选择左侧设备，开始聊天或发送文件。\n\n将文件拖入这里，即可发起发送请求。\n接收前双方需核对验证码。",
+        "选择左侧在线设备，直接发送消息或文件。\n\n首次连接核对一次验证码，以后记住设备。\n拖入文件即可发送，对方决定是否接收。",
     )
     app.transcript.configure(state="disabled")
+    app.composer = tk.Text(
+        right, height=3, relief="flat", wrap="word", font=("Microsoft YaHei", 10), padx=8, pady=6
+    )
+    app.composer.pack(fill="x", pady=(6, 4))
+    app.composer.bind("<Return>", app.send_message)
+    app.composer.bind("<Shift-Return>", lambda _: None)
+    bottom = ttk.Frame(right)
+    bottom.pack(fill="x")
+    ttk.Label(bottom, text="Enter 发送 · Shift+Enter 换行", foreground="#78857c").pack(side="left")
+    app.message_button = ttk.Button(
+        bottom, text="发送消息", command=app.send_message, state="disabled", style="Green.TButton"
+    )
+    app.message_button.pack(side="right")
     tools = ttk.Frame(right)
     tools.pack(fill="x", pady=(8, 4))
     app.choose_button = ttk.Button(tools, text="选择文件", command=app.choose)
@@ -125,15 +136,6 @@ def build(app, args):
     )
     app.send_progress = ttk.Progressbar(right, maximum=100)
     app.send_progress.pack(fill="x", pady=(2, 4))
-    app.send_card = ttk.Frame(right)
-    app.out_code = tk.StringVar()
-    ttk.Label(app.send_card, textvariable=app.out_code, font=("Consolas", 12, "bold")).pack(
-        side="left"
-    )
-    app.verify_button = ttk.Button(
-        app.send_card, text="一致，继续", command=app.confirm_send, state="disabled"
-    )
-    app.verify_button.pack(side="right")
     app.receive_card = ttk.Frame(right)
     app.receive_text = tk.StringVar()
     ttk.Label(app.receive_card, textvariable=app.receive_text, wraplength=430).pack(anchor="w")
@@ -142,7 +144,7 @@ def build(app, args):
     app.in_code = tk.StringVar()
     ttk.Label(row, textvariable=app.in_code, font=("Consolas", 12, "bold")).pack(side="left")
     app.accept_button = ttk.Button(
-        row, text="一致，接收", command=lambda: app.decide(True), state="disabled"
+        row, text="接收", command=lambda: app.decide(True), state="disabled"
     )
     app.accept_button.pack(side="right")
     app.reject_button = ttk.Button(
@@ -151,19 +153,6 @@ def build(app, args):
     app.reject_button.pack(side="right", padx=4)
     app.receive_progress = ttk.Progressbar(app.receive_card, maximum=100)
     app.receive_progress.pack(fill="x", pady=3)
-    app.composer = tk.Text(
-        right, height=3, relief="flat", wrap="word", font=("Microsoft YaHei", 10), padx=8, pady=6
-    )
-    app.composer.pack(fill="x", pady=(6, 4))
-    app.composer.bind("<Return>", app.send_message)
-    app.composer.bind("<Shift-Return>", lambda _: None)
-    bottom = ttk.Frame(right)
-    bottom.pack(fill="x")
-    ttk.Label(bottom, text="Enter 发送 · Shift+Enter 换行", foreground="#78857c").pack(side="left")
-    app.message_button = ttk.Button(
-        bottom, text="发送消息", command=app.send_message, state="disabled", style="Green.TButton"
-    )
-    app.message_button.pack(side="right")
     app.status = tk.StringVar(value="正在启动加密连接…")
     ttk.Label(body, textvariable=app.status, foreground="#26684e", wraplength=680).pack(
         anchor="w", pady=(8, 0)
@@ -175,7 +164,7 @@ def build(app, args):
 
     app.settings_window = settings = tk.Toplevel(tk_root)
     settings.title("邻传设置")
-    settings.geometry("380x255")
+    settings.geometry("380x285")
     settings.withdraw()
     settings.protocol("WM_DELETE_WINDOW", settings.withdraw)
     frame = ttk.Frame(settings, padding=16)
@@ -201,4 +190,7 @@ def build(app, args):
 
     ttk.Button(frame, text="软件更新 · GitHub", command=app.show_updates).pack(
         anchor="e", pady=(12, 0)
+    )
+    ttk.Button(frame, text="设备身份 / 忘记设备", command=app.show_identity).pack(
+        anchor="e", pady=4
     )

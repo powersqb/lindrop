@@ -5,8 +5,9 @@ import os
 import queue
 import threading
 import time
+import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, simpledialog
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from .chat_ui import ChatUI
 from .discovery import Peer, device_name
@@ -29,7 +30,7 @@ class Desktop(ChatUI, UpdateUI):
         self.args, self.node = args, None
         self.closed, self.sending, self.starting = False, False, False
         self.ui_events = queue.Queue()
-        self.send_cancel, self.send_confirm = threading.Event(), threading.Event()
+        self.send_cancel = threading.Event()
         self.paths, self.peers, self.manual = [], {}, {}
         self.manual_probe_at, self.incoming = 0, None
         self.sessions, self.conversations, self.chat_dialogs = {}, {}, {}
@@ -72,11 +73,13 @@ class Desktop(ChatUI, UpdateUI):
             messagebox.showerror("设备名", str(error), parent=self.window)
 
     def switch_network(self, _=None):
-        if self.starting or self.sending or self.incoming or self.sessions:
+        if self.starting or self.sending or self.incoming:
             if self.node:
                 self.host_var.set(self.node.host)
             messagebox.showinfo("切换网络", "请等待当前传输完成再切换网络", parent=self.window)
             return
+        for peer_id in list(self.sessions):
+            self.end_chat(peer_id)
         if self.node:
             self.node.close()
             self.node = None
@@ -115,17 +118,26 @@ class Desktop(ChatUI, UpdateUI):
             for path in paths:
                 self.file_list.insert("end", Path(path).name)
 
-    def send(self):
+    def send(self, *, peer=None, paths=None):
         selected = self.devices.selection()
-        peer = self.peers.get(selected[0]) if selected else None
-        if not self.node or not peer or not self.paths or self.sending:
+        peer = peer or (self.peers.get(selected[0]) if selected else None)
+        paths = list(paths if paths is not None else self.paths)
+        if not self.node or not peer or not paths or self.sending:
             messagebox.showinfo("发送文件", "请先选择在线设备和要发送的文件", parent=self.window)
             return
-        paths, node = list(self.paths), self.node
+        node = self.node
+        try:
+            if not node.trust.check(peer):
+                session = self.connect_chat(peer)
+                session["pending_files"] = paths
+                self.status.set("首次发送请确认设备身份，记住设备后发送方无需再确认")
+                return
+        except ValueError as error:
+            self.status.set(str(error))
+            return
         self.file_peers[peer.id] = peer
         self.sending = True
         self.send_cancel.clear()
-        self.send_confirm.clear()
         self.send_button.configure(state="disabled")
         self.choose_button.configure(state="disabled")
         self.cancel_button.configure(state="normal")
@@ -145,13 +157,6 @@ class Desktop(ChatUI, UpdateUI):
                 if self.send_cancel.is_set():
                     raise InterruptedError("发送已取消")
                 offer = node.begin(peer, files)
-                node.emit("outgoing_offer", code=offer["code"], name=peer.name)
-                deadline = time.monotonic() + 120
-                while not self.send_confirm.wait(0.2):
-                    if self.send_cancel.is_set() or node.closed.is_set():
-                        raise InterruptedError("发送已取消")
-                    if time.monotonic() > deadline:
-                        raise TimeoutError("验证码核对超时，请重新发送")
                 node.emit("send_wait", text="等待对方确认接收…")
                 token = node.wait_accepted(peer, offer, self.send_cancel)
                 for index, (path, item) in enumerate(zip(paths, files, strict=True)):
@@ -179,14 +184,12 @@ class Desktop(ChatUI, UpdateUI):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def confirm_send(self):
-        self.send_confirm.set()
-        self.verify_button.configure(state="disabled")
-
     def cancel_send(self):
+        for peer_id, session in list(self.sessions.items()):
+            if session.pop("pending_files", None):
+                self.end_chat(peer_id)
         self.send_cancel.set()
         self.send_text.set("正在取消发送…")
-        self.verify_button.configure(state="disabled")
 
     def decide(self, accepted):
         if self.node and self.incoming:
@@ -194,6 +197,9 @@ class Desktop(ChatUI, UpdateUI):
                 if str(self.accept_button["state"]) == "disabled" and not accepted:
                     self.node.protocol.abort(self.incoming)
                 else:
+                    if accepted:
+                        offer = self.node.protocol.offers[self.incoming]
+                        self.node.trust.remember(offer.sender)
                     self.node.protocol.decide(self.incoming, accepted)
             except ValueError as error:
                 messagebox.showerror("接收文件", str(error), parent=self.window)
@@ -237,6 +243,54 @@ class Desktop(ChatUI, UpdateUI):
     def settings(self):
         self.settings_window.deiconify()
         self.settings_window.lift()
+
+    def show_identity(self):
+        if not self.node:
+            return
+        peer = self.selected_peer()
+        dialog = tk.Toplevel(self.window)
+        dialog.title("设备身份")
+        dialog.geometry("500x280")
+        frame = ttk.Frame(dialog, padding=16)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="我的证书 SHA-256").pack(anchor="w")
+        ttk.Label(frame, text=self.node.fingerprint, wraplength=460, font=("Consolas", 10)).pack(
+            anchor="w", pady=5
+        )
+        if not peer:
+            ttk.Label(frame, text="先在主窗口选中对方设备，可查看身份或忘记设备。").pack(
+                anchor="w", pady=12
+            )
+            return
+        stored = self.node.trust.peers.get(peer.id)
+        ttk.Label(frame, text=f"{peer.name} · {'已记住' if stored else '尚未确认'}").pack(
+            anchor="w", pady=(12, 0)
+        )
+        ttk.Label(
+            frame,
+            text=(stored or {}).get("fingerprint", peer.fingerprint),
+            wraplength=460,
+            font=("Consolas", 10),
+        ).pack(anchor="w", pady=5)
+        ttk.Label(
+            frame, text="设备换证书或重装后，请核实对方身份再忘记并重新核对。", wraplength=460
+        ).pack(anchor="w", pady=8)
+
+        def forget():
+            if self.sending or self.incoming:
+                self.status.set("请先取消或完成当前文件传输，再忘记设备")
+                return
+            self.end_chat(peer.id)
+            for channel in list(self.node.chat.channels.values()):
+                if channel.peer.id == peer.id:
+                    self.node.chat.close(channel.id)
+            self.node.trust.forget(peer.id)
+            self.status.set(f"已忘记 {peer.name}；下次发送需重新核对验证码")
+            dialog.destroy()
+
+        ttk.Button(
+            frame, text="忘记此设备", command=forget, state="normal" if stored else "disabled"
+        ).pack(anchor="e")
 
     def drop_files(self, event):
         if self.sending:
@@ -290,11 +344,6 @@ class Desktop(ChatUI, UpdateUI):
             peer = event["peer"]
             if peer.id in self.manual or (kind == "manual_peer" and len(self.manual) < 16):
                 self.manual[peer.id] = peer
-        elif kind == "outgoing_offer":
-            self.send_card.pack(fill="x", before=self.composer)
-            self.out_code.set(event["code"])
-            self.send_text.set(f"请与 {event['name']} 核对双方窗口中的验证码，然后继续发送。")
-            self.verify_button.configure(state="normal")
         elif kind == "send_wait":
             self.send_text.set(event["text"])
         elif kind == "send_progress":
@@ -304,18 +353,15 @@ class Desktop(ChatUI, UpdateUI):
         elif kind == "sent":
             self.add_history("发送 → " + event["peer"], event["name"], "已完成", event["peer_id"])
         elif kind == "send_end":
-            self.send_card.pack_forget()
             self.sending = False
             self.send_text.set(event["text"])
-            self.out_code.set("")
             self.send_button.configure(state="normal")
             self.choose_button.configure(state="normal")
             self.cancel_button.configure(state="disabled")
-            self.verify_button.configure(state="disabled")
             if not event["ok"]:
                 self.add_history("发送", "本次传输", event["text"])
         elif kind == "incoming":
-            self.receive_card.pack(fill="x", before=self.composer)
+            self.receive_card.pack(fill="x", before=self.file_list)
             self.incoming = event["id"]
             self.file_peers[event["peer"].id] = event["peer"]
             total = sum(item["size"] for item in event["files"])
@@ -325,7 +371,9 @@ class Desktop(ChatUI, UpdateUI):
                 f"{event['name']} ({event['host']}) 发来 {len(event['files'])} 个文件，"
                 f"共 {human_size(total)}：{names}"
             )
-            self.in_code.set(event["code"])
+            remembered = self.node.trust.check(event["peer"])
+            self.in_code.set("" if remembered else event["code"])
+            self.accept_button.configure(text="接收" if remembered else "核对一致，接收")
             self.accept_button.configure(state="normal")
             self.reject_button.configure(state="normal", text="拒绝")
             self.receive_progress["value"] = 0
@@ -334,7 +382,7 @@ class Desktop(ChatUI, UpdateUI):
             self.accept_button.configure(state="disabled")
             if event["accepted"]:
                 self.reject_button.configure(text="停止接收")
-                self.receive_text.set("已确认接收，等待发送方核对验证码…")
+                self.receive_text.set("正在接收…可随时取消")
             else:
                 self.clear_incoming("已拒绝接收")
         elif kind == "receive_progress":

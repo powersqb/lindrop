@@ -70,7 +70,7 @@ def safe_name(name: str) -> str:
     return name
 
 
-def prepare_certificate(directory: Path, host: str) -> tuple[Path, Path, str]:
+def prepare_certificate(directory: Path, host: str, *, persistent=False) -> tuple[Path, Path, str]:
     directory.mkdir(parents=True, exist_ok=True)
     if os.name == "nt":
         # Protect the private key and received files from other local accounts.
@@ -93,7 +93,15 @@ def prepare_certificate(directory: Path, host: str) -> tuple[Path, Path, str]:
     else:
         directory.chmod(0o700)
     cert, key = directory / "certificate.pem", directory / "private-key.pem"
-    # A new certificate each run binds its fingerprint to this pairing session.
+    # Desktop pins survive restarts. Never silently replace a damaged identity.
+    if persistent and (cert.exists() or key.exists()):
+        if not cert.exists() or not key.exists():
+            raise ValueError("设备证书或私钥缺失，请恢复邻传数据备份")
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(cert, key)
+        der = ssl.PEM_cert_to_DER_cert(cert.read_text("ascii"))
+        fingerprint = hashlib.sha256(der).hexdigest().upper()
+        return cert, key, ":".join(fingerprint[i : i + 2] for i in range(0, 64, 2))
     candidates = [
         str(Path(getattr(sys, "_MEIPASS", WEB.parent)) / "openssl" / "openssl.exe"),
         shutil.which("openssl"),
@@ -117,7 +125,7 @@ def prepare_certificate(directory: Path, host: str) -> tuple[Path, Path, str]:
             "-sha256",
             "-nodes",
             "-days",
-            "7",
+            "3650" if persistent else "7",
             "-subj",
             "/CN=LinDrop local transfer",
             "-addext",
@@ -479,10 +487,12 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(400, {"error": "传输中断，未保留不完整文件，请重试"})
 
 
-def create_server(host: str, port: int, directory: Path) -> tuple[LanServer, str]:
+def create_server(
+    host: str, port: int, directory: Path, *, persistent=False
+) -> tuple[LanServer, str]:
     if not is_lan(host):
         raise ValueError("只支持局域网 IPv4 地址")
-    cert, key, fingerprint = prepare_certificate(directory, host)
+    cert, key, fingerprint = prepare_certificate(directory, host, persistent=persistent)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.load_cert_chain(cert, key)

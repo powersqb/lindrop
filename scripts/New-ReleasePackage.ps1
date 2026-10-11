@@ -29,7 +29,7 @@ try {
     $taskZipHash = (Get-FileHash -LiteralPath $taskZip -Algorithm SHA256).Hash.ToLowerInvariant()
     $taskExeHash = (Get-FileHash -LiteralPath $ExePath -Algorithm SHA256).Hash.ToLowerInvariant()
     "$taskZipHash  $(Split-Path $taskZip -Leaf)`n$taskExeHash  邻传.exe" | Set-Content -LiteralPath (Join-Path $OutputDirectory 'SHA256SUMS.txt') -Encoding utf8
-    $taskNotes = "邻传 $taskVersion：局域网文字聊天、原生多文件拖拽和加密文件传输。`n`n设置 → 软件更新 · GitHub：手动检查并下载 SHA-256 校验后的发布包。退出 App 后手动替换 EXE，保留 邻传数据 文件夹。`n`nWindows x64 便携版，免安装。第二台物理电脑仍待验证。"
+    $taskNotes = "邻传 $taskVersion：局域网在线直聊、原生多文件拖拽和加密文件传输。首次核对记住设备，以后无需开始/结束聊天；文件仅接收方确认，可拒绝或中途取消。`n`n设置 → 软件更新 · GitHub：手动检查并下载 SHA-256 校验后的发布包。退出 App 后手动替换 EXE，保留 邻传数据 文件夹。`n`nWindows x64 便携版，免安装。第二台物理电脑仍待验证。"
     $taskNotes | Set-Content -LiteralPath (Join-Path $OutputDirectory 'release-notes.md') -Encoding utf8
     Write-Output $taskZip
 } finally { Pop-Location }

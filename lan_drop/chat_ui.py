@@ -38,19 +38,16 @@ class ChatUI:
     def refresh_chat_controls(self):
         peer = self.selected_peer()
         session = self.sessions.get(peer.id) if peer else None
-        ready = bool(session and session.get("ready") and not session.get("busy"))
-        self.chat_button.configure(text="结束聊天" if session else "开始聊天")
-        self.message_button.configure(state="normal" if ready else "disabled")
+        available = bool(self.node and peer and not (session and session.get("busy")))
+        self.message_button.configure(state="normal" if available else "disabled")
 
-    def chat_toggle(self):
-        peer = self.selected_peer()
+    def connect_chat(self, peer):
         if not self.node or not peer:
-            self.status.set("请先选择在线设备")
-            return
+            raise ValueError("请先选择在线设备")
         if peer.id in self.sessions:
-            self.end_chat(peer.id)
-            return
+            return self.sessions[peer.id]
         node = self.node
+        remembered = node.trust.check(peer)
         session = {
             "peer": peer,
             "outgoing": True,
@@ -60,14 +57,21 @@ class ChatUI:
             "id": None,
             "cursor": 0,
         }
+        if remembered:
+            session["confirmed"].set()
         self.sessions[peer.id] = session
         self.refresh_chat_controls()
 
         def worker():
             try:
-                offer = node.begin(peer, [], chat=True)
+                verification_shown = not remembered
+                hello = peer_request(peer, "GET", "/peer/hello", source=node.host)
+                if hello.get("id") != peer.id or hello.get("remembered_chat") is not True:
+                    raise ValueError("在线直聊需要双方升级到邻传 0.5.0 或更新版本")
+                offer = node.begin(peer, [], chat=True, automatic=True)
                 session.update(offer)
-                node.emit("chat_verify", session=session)
+                if not remembered:
+                    node.emit("chat_verify", session=session)
                 deadline = time.monotonic() + 120
                 while not session["cancel"].is_set() and not node.closed.is_set():
                     result = peer_request(
@@ -78,11 +82,15 @@ class ChatUI:
                         source=node.host,
                     )
                     if result["status"] not in {"pending", "accepted"}:
-                        raise ValueError("对方已拒绝或结束聊天")
+                        raise ValueError("对方取消连接或已离线")
+                    if result["status"] == "pending" and not verification_shown:
+                        session["confirmed"].clear()
+                        node.emit("chat_verify", session=session)
+                        verification_shown = True
                     if session["confirmed"].is_set() and result["status"] == "accepted":
                         break
                     if time.monotonic() > deadline:
-                        raise TimeoutError("聊天核对超时")
+                        raise TimeoutError("首次设备核对超时，请重试")
                     session["cancel"].wait(0.4)
                 if session["cancel"].is_set() or node.closed.is_set():
                     return
@@ -94,6 +102,7 @@ class ChatUI:
                     offer["secret"],
                     node.host,
                 )
+                node.trust.remember(peer)
                 node.emit("chat_ready", session=session)
                 while not session["cancel"].is_set() and not node.closed.is_set():
                     result = peer_request(
@@ -104,7 +113,7 @@ class ChatUI:
                         source=node.host,
                     )
                     if result["status"] != "active":
-                        raise ValueError("对方已结束聊天")
+                        raise ValueError("设备连接已过期，下次发送会自动重连")
                     if result["oldest"] > session["cursor"] + 1:
                         node.emit("chat_gap", session=session)
                     for item in result["messages"]:
@@ -130,6 +139,7 @@ class ChatUI:
                         pass
 
         threading.Thread(target=worker, daemon=True).start()
+        return session
 
     def end_chat(self, peer_id):
         session = self.sessions.pop(peer_id, None)
@@ -140,25 +150,22 @@ class ChatUI:
             dialog = self.chat_dialogs.pop(session.get("id"), None)
             if dialog:
                 dialog.destroy()
-            self.log(session["peer"], "系统", "聊天已结束；聊天记录仅保留在当前窗口内")
         self.refresh_chat_controls()
 
     def chat_verify(self, session):
         if session["cancel"].is_set():
             return
         dialog = tk.Toplevel(self.window)
-        dialog.title("核对聊天验证码")
+        dialog.title("首次确认设备")
         dialog.geometry("420x190")
         dialog.resizable(False, False)
         dialog.transient(self.window)
         frame = ttk.Frame(dialog, padding=16)
         frame.pack(fill="both", expand=True)
-        ttk.Label(frame, text=f"与 {session['peer'].name} 建立聊天", wraplength=380).pack(
-            anchor="w"
-        )
-        ttk.Label(frame, text="通过可信方式核对双方验证码。一致后再继续。", wraplength=380).pack(
-            anchor="w", pady=8
-        )
+        ttk.Label(frame, text=f"首次连接 {session['peer'].name}", wraplength=380).pack(anchor="w")
+        ttk.Label(
+            frame, text="当面或电话核对双方验证码。确认后记住设备，以后无需重复。", wraplength=380
+        ).pack(anchor="w", pady=8)
         ttk.Label(frame, text=session["code"], font=("Consolas", 18, "bold")).pack()
         buttons = ttk.Frame(frame)
         buttons.pack(fill="x", pady=10)
@@ -171,7 +178,7 @@ class ChatUI:
                         session["confirmed"].set()
                     else:
                         self.node.chat.decide(session["id"], True)
-                        self.status.set("等待对方确认聊天验证码…")
+                        self.status.set("等待对方完成首次设备确认…")
                 else:
                     self.end_chat(session["peer"].id)
                 self.refresh_chat_controls()
@@ -184,13 +191,18 @@ class ChatUI:
                     dialog.destroy()
 
         ttk.Button(buttons, text="取消", command=lambda: decide(False)).pack(side="left")
-        ttk.Button(buttons, text="一致，开始聊天", command=lambda: decide(True)).pack(side="right")
+        ttk.Button(buttons, text="一致，记住设备", command=lambda: decide(True)).pack(side="right")
         dialog.protocol("WM_DELETE_WINDOW", lambda: decide(False))
 
     def send_message(self, event=None):
         peer = self.selected_peer()
         session = self.sessions.get(peer.id) if peer else None
-        if not session or not session["ready"] or session.get("busy"):
+        if not peer or not self.node or (session and session.get("busy")):
+            return "break"
+        try:
+            self.node.trust.check(peer)
+        except ValueError as error:
+            self.status.set(str(error))
             return "break"
         text = self.composer.get("1.0", "end-1c")
         try:
@@ -198,8 +210,24 @@ class ChatUI:
         except ValueError as error:
             self.status.set(str(error))
             return "break"
+        try:
+            session = session or self.connect_chat(peer)
+        except ValueError as error:
+            self.status.set(str(error))
+            return "break"
+        if not session["ready"]:
+            session["pending_text"] = text
+            session["busy"] = True
+            self.refresh_chat_controls()
+            self.status.set("正在连接设备；首次连接请核对验证码，完成后发送此消息")
+            return "break"
+        self.deliver_message(session, text)
+        return "break"
+
+    def deliver_message(self, session, text):
+        peer = session["peer"]
         session["busy"] = True
-        self.message_button.configure(state="disabled")
+        self.refresh_chat_controls()
         node = self.node
 
         def worker():
@@ -221,7 +249,14 @@ class ChatUI:
                 node.emit("chat_send_error", session=session, text=str(error))
 
         threading.Thread(target=worker, daemon=True).start()
-        return "break"
+
+    def flush_pending(self, session):
+        text = session.pop("pending_text", None)
+        if text is not None:
+            self.deliver_message(session, text)
+        paths = session.pop("pending_files", None)
+        if paths:
+            self.send(peer=session["peer"], paths=paths)
 
     def handle_chat(self, event):
         kind = event["kind"]
@@ -230,10 +265,26 @@ class ChatUI:
             return
         if kind == "chat_request":
             channel = event["channel"]
-            if channel.peer.id in self.sessions:
-                self.node.chat.decide(channel.id, False)
-                self.status.set("对方也发起了聊天，请保留其中一个请求")
+            existing = self.sessions.get(channel.peer.id)
+            # Simultaneous first messages use one channel, with the lower device
+            # ID initiating. Move queued content with its peer, never the selection.
+            if (
+                existing
+                and not existing["ready"]
+                and (not existing["outgoing"] or self.node.id < channel.peer.id)
+            ):
+                if channel.status == "pending":
+                    self.node.chat.decide(channel.id, False)
+                else:
+                    self.node.chat.close(channel.id)
                 return
+            pending = {}
+            if existing:
+                pending = {
+                    k: existing[k] for k in ("pending_text", "pending_files") if k in existing
+                }
+                pending["busy"] = "pending_text" in pending
+                self.end_chat(channel.peer.id)
             session = {
                 "id": channel.id,
                 "peer": channel.peer,
@@ -241,20 +292,24 @@ class ChatUI:
                 "outgoing": False,
                 "cancel": threading.Event(),
                 "ready": False,
+                **pending,
             }
             self.sessions[channel.peer.id] = session
-            self.chat_verify(session)
+            if channel.status == "pending":
+                self.chat_verify(session)
         elif kind == "chat_active":
             channel = event["channel"]
             active = self.sessions.get(channel.peer.id)
             if active and active["id"] == channel.id:
                 active["ready"] = True
-                self.log(channel.peer, "系统", "已建立加密聊天；会话最长 1 小时")
+                self.status.set(f"已连接 {channel.peer.name} · 在线可直接聊天")
+                self.flush_pending(active)
         elif kind == "chat_verify":
             self.chat_verify(session)
         elif kind == "chat_ready":
             session["ready"] = True
-            self.log(session["peer"], "系统", "已建立加密聊天；会话最长 1 小时")
+            self.status.set(f"已连接 {session['peer'].name} · 在线可直接聊天")
+            self.flush_pending(session)
         elif kind == "chat_message":
             self.log(event["peer"], event["peer"].name, event["text"])
         elif kind == "chat_reply":

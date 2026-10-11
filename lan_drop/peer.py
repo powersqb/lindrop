@@ -7,6 +7,7 @@ import http.client
 import json
 import queue
 import secrets
+import select
 import shutil
 import socket
 import ssl
@@ -142,6 +143,7 @@ class Incoming:
     token: str = ""
     complete: set[int] = field(default_factory=set)
     active: set[int] = field(default_factory=set)
+    connections: dict[int, socket.socket] = field(default_factory=dict, repr=False)
 
 
 class PeerProtocol:
@@ -189,14 +191,20 @@ class PeerProtocol:
                 raise ValueError("请求不存在或未授权")
             return offer
 
-    def abort(self, identifier):
+    def abort(self, identifier, text="已停止接收"):
         with self.lock:
             offer = self.offers.get(identifier)
             if not offer or offer.status not in {"pending", "accepted"}:
                 raise ValueError("请求已结束")
             offer.status = "cancelled"
             offer.token = ""
-            self.node.emit("incoming_end", id=identifier, text="已停止接收")
+            # Interrupt a blocked body read immediately, even if the sender stalls.
+            for connection in list(offer.connections.values()):
+                try:
+                    connection.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+            self.node.emit("incoming_end", id=identifier, text=text)
 
     def get(self, handler, path):
         self.sweep()
@@ -205,7 +213,14 @@ class PeerProtocol:
             return
         if path == "/peer/hello":
             handler.respond(
-                200, {"app": "lindrop", "protocol": 2, "chat": True, **self.node.identity()}
+                200,
+                {
+                    "app": "lindrop",
+                    "protocol": 2,
+                    "chat": True,
+                    "remembered_chat": True,
+                    **self.node.identity(),
+                },
             )
             return
         try:
@@ -242,9 +257,8 @@ class PeerProtocol:
             elif path.startswith("/peer/cancel/"):
                 offer = self.authenticated_offer(handler, path.removeprefix("/peer/cancel/"))
                 with self.lock:
-                    offer.status = "cancelled"
-                    offer.token = ""
-                self.node.emit("incoming_end", id=offer.id, text="对方已取消发送")
+                    if offer.status in {"pending", "accepted"}:
+                        self.abort(offer.id, text="对方已取消发送")
                 handler.respond(200, {})
             else:
                 handler.respond(404, {"error": "接口不存在"})
@@ -283,6 +297,7 @@ class PeerProtocol:
         ):
             raise ValueError("发送端信息无效")
         sender = Peer(identifier, "待验证", ip, port, fingerprint, now)
+        self.node.trust.check(sender)
         hello = peer_request(sender, "GET", "/peer/hello", source=self.node.host, timeout=3)
         if hello.get("id") != identifier or hello.get("protocol") != 2:
             raise ValueError("发送设备身份不一致")
@@ -331,6 +346,7 @@ class PeerProtocol:
                 if handler.body_length(MAX_FILE) != item["size"]:
                     raise ValueError("文件大小与确认的信息不一致")
                 offer.active.add(index)
+                offer.connections[index] = handler.connection
                 claimed = True
             if shutil.disk_usage(self.node.received).free < item["size"] + 128 * 1024**2:
                 raise ValueError("磁盘空间不足")
@@ -339,15 +355,26 @@ class PeerProtocol:
             target = self.node.received / (prefix + "_" + item["name"])
             digest, remaining = hashlib.sha256(), item["size"]
             last = 0
+            idle_deadline = time.monotonic() + 30
+            # Nonblocking read1 preserves already-buffered HTTP body bytes and
+            # permits cancellation every 200 ms on Windows, even for stalled TLS.
+            handler.connection.setblocking(False)
             with temporary.open("xb") as output:
                 while remaining:
                     if self.node.closed.is_set() or offer.status != "accepted":
                         raise InterruptedError("接收已取消")
                     if time.monotonic() > offer.expires:
                         raise TimeoutError("传输超时")
-                    block = handler.rfile.read(min(1024 * 1024, remaining))
+                    if time.monotonic() > idle_deadline:
+                        raise TimeoutError("发送方超过30秒未发送数据")
+                    try:
+                        block = handler.rfile.read1(min(1024 * 1024, remaining))
+                    except (ssl.SSLWantReadError, ssl.SSLWantWriteError):
+                        select.select([handler.connection], [], [], 0.2)
+                        continue
                     if not block:
                         raise ConnectionError("连接中断")
+                    idle_deadline = time.monotonic() + 30
                     output.write(block)
                     digest.update(block)
                     remaining -= len(block)
@@ -360,6 +387,7 @@ class PeerProtocol:
                             total=item["size"],
                         )
                         last = time.monotonic()
+            handler.connection.settimeout(30)
             if not secrets.compare_digest(digest.hexdigest(), item["sha256"]):
                 raise ValueError("文件校验失败，未保存文件，请重新发送")
             with self.lock:
@@ -390,22 +418,41 @@ class PeerProtocol:
                     offer.token = ""
                     offer.expires = time.monotonic() + 60
                 self.node.emit("receive_error", id=offer.id, text=str(error))
-            handler.respond(400, {"error": str(error) or "传输中断"})
+            try:
+                handler.connection.settimeout(30)
+                handler.respond(400, {"error": str(error) or "传输中断"})
+            except OSError:
+                pass  # Receiver cancellation may have shut down the socket.
         finally:
+            if temporary:
+                temporary.unlink(missing_ok=True)
             if offer is not None and claimed:
                 with self.lock:
                     offer.active.discard(index)
+                    offer.connections.pop(index, None)
 
 
 class PeerNode:
     def __init__(self, host, port, directory, name=None, discover=True):
         self.host, self.directory = host, Path(directory)
         self.name = device_name(name or socket.gethostname())
-        self.id = secrets.token_hex(16)
         self.events = queue.Queue()
         self.closed = threading.Event()
-        self.server, fingerprint = create_server(host, port, self.directory)
+        self.server, fingerprint = create_server(host, port, self.directory, persistent=True)
         self.fingerprint = fingerprint.replace(":", "").lower()
+        from .trust import TrustStore
+
+        try:
+            identity_path = self.directory / "device-id"
+            if not identity_path.exists():
+                identity_path.write_text(secrets.token_hex(16), encoding="ascii")
+            self.id = identity_path.read_text("ascii").strip()
+            if not HEX32.fullmatch(self.id):
+                raise ValueError("设备标识无效，请恢复邻传数据备份")
+            self.trust = TrustStore(self.directory)
+        except Exception:
+            self.server.server_close()
+            raise
         self.port = self.server.server_port
         self.received = self.server.state.received
         self.protocol = PeerProtocol(self)
@@ -448,7 +495,7 @@ class PeerNode:
     def manual_peer(self, host, port=8765):
         if not is_lan(host) or not 1024 <= port <= 65535:
             raise ValueError("请输入局域网 IPv4 与有效端口")
-        # Learn a provisional pin through TLS; human code comparison is mandatory later.
+        # A provisional pin still needs a first-use human identity check.
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
@@ -465,11 +512,14 @@ class PeerNode:
         identifier = hello.get("id", "")
         if not isinstance(identifier, str) or not HEX32.fullmatch(identifier):
             raise ValueError("设备身份无效")
-        return Peer(
+        peer = Peer(
             identifier, device_name(hello.get("name")), host, port, fingerprint, time.monotonic()
         )
+        self.trust.check(peer)
+        return peer
 
-    def begin(self, peer, files, *, chat=False):
+    def begin(self, peer, files, *, chat=False, automatic=False):
+        self.trust.check(peer)
         nonce = secrets.token_hex(32)
         result = peer_request(
             peer,
@@ -479,6 +529,7 @@ class PeerNode:
                 **self.identity(),
                 "files": files,
                 "nonce": nonce,
+                "automatic": automatic,
             },
             source=self.host,
         )
@@ -520,6 +571,7 @@ class PeerNode:
         raise TimeoutError("等待接收确认超时，请重新发送")
 
     def send_file(self, peer, offer, token, index, path, item, cancelled, progress):
+        self.trust.check(peer)
         connection = PinnedConnection(peer, self.host)
         try:
             with Path(path).open("rb") as source:
