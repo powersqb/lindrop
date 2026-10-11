@@ -509,9 +509,12 @@ class Desktop(ChatUI, UpdateUI):
         self.window.after(100, self.tick)
 
     def close(self):
+        if self.closed:
+            return
         self.closed = True
         if hasattr(self, "update_cancel"):
             self.update_cancel.set()
+            self.cancel_install()
         for peer_id in list(self.sessions):
             self.end_chat(peer_id)
         self.send_cancel.set()

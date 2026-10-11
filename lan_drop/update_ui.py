@@ -27,6 +27,8 @@ class UpdateUI:
         self.update_cancel = threading.Event()
         self.update_release, self.update_path = None, None
         self.update_busy = False
+        self.update_manifest = None
+        self.update_installing = False
         frame = ttk.Frame(dialog, padding=16)
         frame.pack(fill="both", expand=True)
         ttk.Label(frame, text=f"当前版本 {__version__}", font=("Microsoft YaHei", 12, "bold")).pack(
@@ -81,7 +83,13 @@ class UpdateUI:
 
     def close_updates(self):
         self.update_cancel.set()
+        self.cancel_install()
         self.update_window.withdraw()
+
+    def cancel_install(self):
+        manifest = getattr(self, "update_manifest", None)
+        if manifest and not getattr(self, "update_installing", False):
+            (manifest.parent / "cancel").touch()
 
     def check_updates(self):
         if self.update_busy:
@@ -161,9 +169,12 @@ class UpdateUI:
             manifest = None
             try:
                 manifest = prepare(archive, release, sys.executable, arguments)
+                self.update_manifest = manifest
                 if self.update_cancel.is_set():
                     raise InterruptedError("更新已取消")
                 start_helper(manifest)
+                if self.update_cancel.is_set() or self.closed:
+                    raise InterruptedError("更新已取消")
                 self.ui_events.put({"kind": "update_install_ready", "manifest": manifest})
             except Exception as error:
                 if manifest:
@@ -184,6 +195,7 @@ class UpdateUI:
                 self.install_button.configure(state="normal")
                 self.update_status.set("安装已取消，请结束文件传输后重试。")
             else:
+                self.update_installing = True
                 self.close()
             return
         if kind == "update_progress":

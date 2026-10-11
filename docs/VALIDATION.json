@@ -5,10 +5,22 @@
   "source_repository": "apps/lindrop",
   "release_tag": "v0.6.0",
   "local_build": {
-    "exe": "outputs/release-060-final2/app/邻传.exe",
-    "exe_bytes": 16711085,
-    "exe_sha256": "1883ae08d21898f6085e58eaeae4c328b79700497d2e7b88dca1f5c3a83a6a2d",
+    "exe": "outputs/release-060-ready/app/邻传.exe",
+    "exe_bytes": 16709259,
+    "exe_sha256": "b21fd2aaff5114acce56e0b62942b5a50a2d1e4401336960f3cd0829e6b2d3fb",
     "packaged_selftest": {
+      "ok": true,
+      "version": "0.6.0",
+      "checks": [
+        "bundled Tk and native TkDnD startup",
+        "certificate pin mismatch blocked before control request",
+        "one-time identity comparison, receiver acceptance and bidirectional HTTPS transfer",
+        "remembered devices connect automatically for bidirectional encrypted Unicode chat"
+      ],
+      "discovery": "not tested: no LAN adapter",
+      "sha256": "87d9ec463e59ead4ee43afe9e6848ec630bd35c2de3d9b7a535ed6479a740ece"
+    },
+    "real_lan_selftest": {
       "ok": true,
       "version": "0.6.0",
       "checks": [
@@ -22,20 +34,63 @@
     }
   },
   "app_tests": {
-    "passed": 65,
-    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/tests-060-complete"
+    "passed": 67,
+    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/tests-060-installer-cancel"
   },
   "engineering_tests": {
     "passed": 20
   },
   "ruff": "check and format --check passed",
-  "installer": "unit tests pass; packaged replacement in progress",
-  "ui": "new icon and permission recovery source tests pass; packaged inspection pending user handling Windows prompt",
+  "installer": {
+    "unit_tests": "integrity, extraction bounds, timeout, rollback and cancellation pass",
+    "packaged_update": {
+      "ok": true,
+      "replacement": "real locked old EXE waited, backed up and replaced; restarted new EXE completed self-test",
+      "old_sha256": "a426491cdbc407dc023312593347f8721849c5faa59cc147cecdaf1ada1efb4c",
+      "new_sha256": "1883ae08d21898f6085e58eaeae4c328b79700497d2e7b88dca1f5c3a83a6a2d",
+      "helper_result": {
+        "ok": true,
+        "version": "0.6.0"
+      },
+      "restarted_selftest": {
+        "ok": true,
+        "version": "0.6.0",
+        "checks": [
+          "bundled Tk and native TkDnD startup",
+          "certificate pin mismatch blocked before control request",
+          "one-time identity comparison, receiver acceptance and bidirectional HTTPS transfer",
+          "remembered devices connect automatically for bidirectional encrypted Unicode chat"
+        ],
+        "discovery": "not tested: no LAN adapter",
+        "sha256": "87d9ec463e59ead4ee43afe9e6848ec630bd35c2de3d9b7a535ed6479a740ece"
+      }
+    },
+    "packaged_gui_restart": {
+      "ok": true,
+      "gui_restarted": true,
+      "persistent_files_unchanged": [
+        "certificate.pem",
+        "device-id",
+        "openssl.cnf",
+        "private-key.pem"
+      ],
+      "helper_result": {
+        "ok": true,
+        "version": "0.6.0"
+      }
+    }
+  },
+  "ui": {
+    "screenshot": "docs/assets/desktop-0.6.0.png",
+    "verified": "new EXE icon, 32px main icon, post-update GUI restart and update controls inspected on Windows",
+    "permission_recovery": "bounded source tests passed; exact after-Allow foreground recovery still needs confirmation on user environment"
+  },
   "second_physical_computer": "pending",
   "github": {
     "repository": "https://github.com/powersqb/lindrop",
     "release": "https://github.com/powersqb/lindrop/releases/tag/v0.6.0",
-    "status": "not published yet"
+    "status": "not published yet",
+    "ci_preflight": "https://github.com/powersqb/lindrop/actions/runs/38125833760"
   },
   "privacy": "LAN direct TLS; manual GitHub checks/download; explicit install click; no automatic firewall or network profile changes"
 }

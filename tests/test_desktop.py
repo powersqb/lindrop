@@ -170,3 +170,20 @@ def test_install_blocks_active_transfer_and_source_runtime(desktop, monkeypatch,
     desktop.install_update()
     assert "源码运行" in desktop.update_status.get()
     assert not desktop.update_busy
+
+
+def test_close_during_install_preparation_cancels_helper(desktop, tmp_path):
+    desktop.show_updates()
+    desktop.update_manifest = tmp_path / "job.json"
+    desktop.close()
+    assert (tmp_path / "cancel").exists()
+
+
+def test_install_ready_closes_app_without_cancelling_task(desktop, tmp_path, monkeypatch):
+    desktop.show_updates()
+    desktop.update_manifest = tmp_path / "job.json"
+    calls = []
+    monkeypatch.setattr(desktop, "close", lambda: calls.append(True))
+    desktop.handle_update({"kind": "update_install_ready", "manifest": desktop.update_manifest})
+    desktop.cancel_install()
+    assert calls == [True] and not (tmp_path / "cancel").exists()
