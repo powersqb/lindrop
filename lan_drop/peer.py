@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import http.client
 import json
+import os
 import queue
 import secrets
 import select
@@ -144,6 +145,7 @@ class Incoming:
     complete: set[int] = field(default_factory=set)
     active: set[int] = field(default_factory=set)
     connections: dict[int, socket.socket] = field(default_factory=dict, repr=False)
+    destinations: list[tuple[Path, bool]] = field(default_factory=list)
 
 
 class PeerProtocol:
@@ -163,7 +165,7 @@ class PeerProtocol:
                         offer.status = "expired"
                         self.node.emit("incoming_end", id=offer.id, text="接收请求已超时")
 
-    def decide(self, identifier, accepted):
+    def decide(self, identifier, accepted, destinations=None):
         with self.lock:
             offer = self.offers.get(identifier)
             if not offer or offer.status != "pending" or offer.expires < time.monotonic():
@@ -171,6 +173,24 @@ class PeerProtocol:
             total = sum(item["size"] for item in offer.files)
             if accepted and shutil.disk_usage(self.node.received).free < total + 128 * 1024**2:
                 raise ValueError("本机磁盘空间不足")
+            if accepted:
+                # Only local UI may select alternative names or authorize overwrite.
+                choices = destinations or [(item["name"], False) for item in offer.files]
+                if len(choices) != len(offer.files):
+                    raise ValueError("保存文件数量不一致")
+                targets, used = [], set()
+                for name, overwrite in choices:
+                    name = safe_name(name)
+                    target = self.node.received / name
+                    if name.casefold() in used:
+                        raise ValueError("同一批文件重名，请为其中一个选择其他名称")
+                    if target.is_symlink() or (target.exists() and not target.is_file()):
+                        raise ValueError(f"不能保存到此路径：{name}")
+                    if target.exists() and not overwrite:
+                        raise ValueError(f"文件已存在，请选择覆盖或另存：{name}")
+                    used.add(name.casefold())
+                    targets.append((target, bool(overwrite)))
+                offer.destinations = targets
             offer.status = "accepted" if accepted else "rejected"
             offer.expires = time.monotonic() + (3600 if accepted else 60)
             if accepted:
@@ -352,7 +372,7 @@ class PeerProtocol:
                 raise ValueError("磁盘空间不足")
             prefix = secrets.token_hex(16)
             temporary = self.node.received / (prefix + ".part")
-            target = self.node.received / (prefix + "_" + item["name"])
+            target, overwrite = offer.destinations[index]
             digest, remaining = hashlib.sha256(), item["size"]
             last = 0
             idle_deadline = time.monotonic() + 30
@@ -393,7 +413,18 @@ class PeerProtocol:
             with self.lock:
                 if offer.status != "accepted" or self.node.closed.is_set():
                     raise InterruptedError("接收已取消")
-                temporary.replace(target)
+                if overwrite:
+                    if target.is_symlink():
+                        raise ValueError("保存路径已变化，请重新接收")
+                    temporary.replace(target)
+                else:
+                    # Atomic no-clobber commit: a file created after acceptance
+                    # must never be silently overwritten. Both paths share a volume.
+                    if os.name == "nt":
+                        temporary.rename(target)  # Windows rename refuses existing targets.
+                    else:
+                        target.hardlink_to(temporary)
+                        temporary.unlink()
                 offer.complete.add(index)
                 if len(offer.complete) == len(offer.files):
                     offer.status = "complete"

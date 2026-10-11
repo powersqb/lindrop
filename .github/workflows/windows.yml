@@ -48,7 +48,7 @@ jobs:
         with:
           name: windows-release
           path: |
-            outputs/release/lindrop-v*-windows-x64.zip
+            outputs/release/lindrop-windows-x64.zip
             outputs/release/SHA256SUMS.txt
             outputs/release/release-notes.md
           if-no-files-found: error
@@ -72,6 +72,6 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
           GH_REPO: ${{ github.repository }}
         run: |
-          $taskZip = Get-ChildItem outputs/release -Filter 'lindrop-v*-windows-x64.zip' | Select-Object -ExpandProperty FullName
+          $taskZip = Get-Item outputs/release/lindrop-windows-x64.zip | Select-Object -ExpandProperty FullName
           gh release create $env:RELEASE_TAG $taskZip outputs/release/SHA256SUMS.txt --verify-tag --title "邻传 $env:RELEASE_TAG" --notes-file outputs/release/release-notes.md
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

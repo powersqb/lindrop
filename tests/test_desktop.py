@@ -128,10 +128,45 @@ def test_manual_updates_do_not_connect_on_open(desktop, monkeypatch):
     assert "0.5.0" in desktop.update_status.get()
     desktop.update_window.geometry("420x320")
     desktop.window.update()
-    for widget in (desktop.check_button, desktop.download_button, desktop.update_open_button):
+    for widget in (
+        desktop.check_button,
+        desktop.download_button,
+        desktop.update_open_button,
+        desktop.install_button,
+    ):
         assert widget.winfo_ismapped()
         assert widget.winfo_rooty() + widget.winfo_height() <= (
             desktop.update_window.winfo_rooty() + desktop.update_window.winfo_height()
         )
     desktop.close_updates()
     assert desktop.update_cancel.is_set()
+
+
+def test_receive_collision_requires_local_choice(desktop, monkeypatch):
+    from types import SimpleNamespace
+
+    offer = SimpleNamespace(files=[{"name": "原名.txt"}, {"name": "原名.txt"}])
+    (desktop.node.received / "原名.txt").write_text("existing")
+    monkeypatch.setattr("lan_drop.desktop.messagebox.askyesnocancel", lambda *a, **kw: True)
+    monkeypatch.setattr("lan_drop.desktop.simpledialog.askstring", lambda *a, **kw: "自己选的.txt")
+    assert desktop.receive_names(offer) == [("原名.txt", True), ("自己选的.txt", False)]
+    monkeypatch.setattr("lan_drop.desktop.messagebox.askyesnocancel", lambda *a, **kw: None)
+    assert desktop.receive_names(offer) is None
+    assert (desktop.node.received / "原名.txt").read_text() == "existing"
+
+
+def test_install_blocks_active_transfer_and_source_runtime(desktop, monkeypatch, tmp_path):
+    desktop.show_updates()
+    desktop.update_path = tmp_path / "test.zip"
+    desktop.update_release = object()
+    notices = []
+    monkeypatch.setattr(
+        "lan_drop.update_ui.messagebox.showinfo", lambda *a, **kw: notices.append(a)
+    )
+    desktop.sending = True
+    desktop.install_update()
+    assert len(notices) == 1 and not desktop.update_busy
+    desktop.sending = False
+    desktop.install_update()
+    assert "源码运行" in desktop.update_status.get()
+    assert not desktop.update_busy

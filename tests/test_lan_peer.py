@@ -66,7 +66,11 @@ def test_bidirectional_batch_transfer(nodes, tmp_path, reverse):
     empty.write_bytes(b"")
     paths = [file1, file2, empty]
     offer, files = prepare(sender, receiver, paths)
-    receiver.protocol.decide(offer["id"], True)
+    with pytest.raises(ValueError, match="重名"):
+        receiver.protocol.decide(offer["id"], True)
+    receiver.protocol.decide(
+        offer["id"], True, [("你好.bin", False), ("另存.bin", False), ("空.txt", False)]
+    )
     token = sender.wait_accepted(receiver.as_peer(), offer, threading.Event())
     for index, (path, item) in enumerate(zip(paths, files, strict=True)):
         sender.send_file(
@@ -74,6 +78,7 @@ def test_bidirectional_batch_transfer(nodes, tmp_path, reverse):
         )
     saved = list(receiver.received.iterdir())
     assert len(saved) == 3
+    assert {p.name for p in saved} == {"你好.bin", "另存.bin", "空.txt"}
     assert {p.read_bytes() for p in saved} == {p.read_bytes() for p in paths}
     assert receiver.protocol.offers[offer["id"]].status == "complete"
     assert not sender.server.state.files and not receiver.server.state.files
@@ -95,6 +100,36 @@ def test_receive_permission_and_secret_boundaries(nodes, tmp_path):
     with pytest.raises(ValueError, match="拒绝"):
         a.wait_accepted(b.as_peer(), offer, threading.Event())
     assert not list(b.received.iterdir())
+
+
+def test_original_name_collision_overwrite_and_late_collision(nodes, tmp_path):
+    a, b = nodes
+    source = tmp_path / "原始名字.txt"
+    source.write_bytes(b"new contents")
+    existing = b.received / source.name
+    existing.write_bytes(b"old contents")
+    offer, files = prepare(a, b, [source])
+    with pytest.raises(ValueError, match="已存在"):
+        b.protocol.decide(offer["id"], True)
+    assert existing.read_bytes() == b"old contents"
+    b.protocol.decide(offer["id"], True, [(source.name, True)])
+    token = a.wait_accepted(b.as_peer(), offer, threading.Event())
+    # Failed integrity must preserve the original even after overwrite approval.
+    assert upload_raw(a, b, offer, 0, b"bad contents", token)[0] == 400
+    assert existing.read_bytes() == b"old contents"
+    offer, files = prepare(a, b, [source])
+    b.protocol.decide(offer["id"], True, [(source.name, True)])
+    token = a.wait_accepted(b.as_peer(), offer, threading.Event())
+    a.send_file(b.as_peer(), offer, token, 0, source, files[0], threading.Event(), lambda *_: None)
+    assert existing.read_bytes() == source.read_bytes()
+    assert [p.name for p in b.received.iterdir()] == [source.name]
+    existing.unlink()
+    offer, _ = prepare(a, b, [source])
+    b.protocol.decide(offer["id"], True)
+    token = a.wait_accepted(b.as_peer(), offer, threading.Event())
+    existing.write_bytes(b"created during transfer")
+    assert upload_raw(a, b, offer, 0, source.read_bytes(), token)[0] == 400
+    assert existing.read_bytes() == b"created during transfer"
 
 
 def test_pin_mismatch_blocks_requests(nodes, tmp_path):

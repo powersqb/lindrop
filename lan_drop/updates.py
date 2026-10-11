@@ -1,7 +1,7 @@
 """Opt-in GitHub release checks and bounded, checksum-verified ZIP downloads.
 
-LAN networking never calls this module. Downloads are staged, never executed
-or installed automatically; the user can review the new release first.
+LAN networking never calls this module. Downloads are staged; installation
+requires a separate explicit click so the user can review the release first.
 GitHub's HTTPS digest protects transport integrity, not a compromised account.
 """
 
@@ -21,6 +21,7 @@ REPOSITORY = "powersqb/lindrop"
 RELEASES_URL = f"https://github.com/{REPOSITORY}/releases"
 API_URL = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
 MAX_DOWNLOAD = 128 * 1024**2
+PACKAGE_NAME = "lindrop-windows-x64.zip"
 VERSION = re.compile(r"v?(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})\Z")
 SHA256 = re.compile(r"sha256:([a-f0-9]{64})\Z")
 DOWNLOAD_HOSTS = frozenset(
@@ -106,13 +107,18 @@ def parse_release(payload):
     page = f"{RELEASES_URL}/tag/{tag}"
     if payload.get("html_url") != page:
         raise ValueError("更新信息来自其他仓库")
-    filename = f"lindrop-{tag}-windows-x64.zip"
+    filename = PACKAGE_NAME
     assets = payload.get("assets")
     if not isinstance(assets, list) or len(assets) > 128:
         raise ValueError("发布附件无效")
     candidates = [
         item for item in assets if isinstance(item, dict) and item.get("name") == filename
     ]
+    if not candidates:
+        filename = f"lindrop-{tag}-windows-x64.zip"  # Read historical releases too.
+        candidates = [
+            item for item in assets if isinstance(item, dict) and item.get("name") == filename
+        ]
     if len(candidates) != 1:
         raise ValueError("此版本尚无 Windows x64 发布包，请打开发布页查看")
     asset = candidates[0]
@@ -152,11 +158,14 @@ def download(release, directory, cancelled, progress, *, opener=open_url):
     """Write an immutable staged ZIP only after both length and hash agree."""
     validate_url(release.asset_url, {"github.com"})
     version_tuple(release.version)
-    expected_name = f"lindrop-v{release.version}-windows-x64.zip"
+    expected_name = release.filename
     expected_url = (
         f"https://github.com/{REPOSITORY}/releases/download/v{release.version}/{expected_name}"
     )
-    if release.filename != expected_name or release.asset_url != expected_url:
+    if (
+        expected_name not in {PACKAGE_NAME, f"lindrop-v{release.version}-windows-x64.zip"}
+        or release.asset_url != expected_url
+    ):
         raise ValueError("更新包不属于指定仓库或版本")
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)

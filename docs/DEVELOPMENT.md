@@ -100,7 +100,7 @@ git log --oneline --decorate
 
 源码仓库：https://github.com/powersqb/lindrop ，正式版页面：https://github.com/powersqb/lindrop/releases 。
 
-`updates.py` 是独立的更新模块，只在用户点击时发出公网 HTTPS 请求。`update_ui.py` 负责交互，后台任务依旧通过主线程队列返回。此模块不会把局域网地址、设备名、聊天或文件发送到 GitHub。更新 ZIP 保存到数据目录的 `updates/`；不自动运行或安装。
+`updates.py` 是独立的更新模块，只在用户点击时发出公网 HTTPS 请求。`update_ui.py` 负责交互，后台任务依旧通过主线程队列返回。此模块不会把局域网地址、设备名、聊天或文件发送到 GitHub。更新 ZIP 保存到数据目录的 `updates/`；用户点击“安装并重启”后由独立助手安装，不在后台自动执行。
 
 当前发布包名为 `lindrop-vX.Y.Z-windows-x64.zip`。GitHub Releases 必须是正式发布（非 draft / prerelease），附件上传完成且 API 提供 `sha256:` 摘要；源仓库、标签和下载地址必须匹配，客户端才允许下载。HTTPS 与官方摘要提供附件一致性保证；GitHub 账户若被攻破不在此校验可解决的范围内。维护账户应自行保管授权。
 
@@ -129,3 +129,13 @@ git push origin v0.5.0
 `/peer/hello` 的 `remembered_chat: true` 能力用于新客户端协商。自动聊天 offer 只有已记住对方时才自动接受；未确认设备仍核对一次 SAS。两端同时发起时按设备 ID 确定发起方，携带待发消息/文件切换到同一连接；消息和文件目标始终取原始 peer，不取异步结束时的当前选择。连接到期或重启后按已存 pin 自动重连，聊天内容不持久保存。
 
 文件发送 UI 首次会通过同一个设备确认流程，再发出文件 offer；后续跳过发送方确认，只等接收授权。传输 token、源 IP、证书 pin、SHA-256、限额和接收取消保持有效。旧接口保留供兼容测试，0.5.0 用户流程需要两端的新能力。首次核对不能由自动发现代替，网络 I/O 仍只在后台线程。
+
+## 0.6.0 便携更新与文件名
+
+`installer.py` 复核 ZIP 的摘要和大小，只解压唯一的固定文件 `邻传.exe`，限制条目和解压大小，验证 x64 PE 头。当前 EXE 复制为同目录唯一 staging 下的 helper；`__main__.py --apply-update` 是内部入口，只允许该 helper 执行。JSON 保存精确目标文件名、两份 EXE 摘要、旧进程 PID、重启参数；不用 shell。助手发出 ready 后 UI 主线程正常关闭，等待旧 GUI 进程退出并重试 bootloader 的图片锁，备份旧文件、原子替换、重启。失败不杀进程、不提升权限；替换/创建新进程失败恢复旧文件，结果写入 staging。新进程成功创建不是完整功能健康检查。下载包和备份由用户确认新版正常后清理。传输忙时不安装，数据目录和证书不移动。
+
+`PeerProtocol.decide` 在接收方授权时选择保存名/是否覆盖。默认原名，不允许隐式覆盖或一批重名。`Desktop.receive_names` 在 Tk 主线程询问覆盖/另存/取消。内容写入随机 `.part` 临时文件，校验后提交；Windows rename 拒绝已存在目标，其他平台用 hardlink 原子无覆盖提交。明确覆盖用 replace；失败或取消不改旧文件。远端只提供安全的基本文件名，无法指定目录。旧浏览器兼容接口仍保留旧的随机前缀行为；独立 EXE 使用新的 peer 接收协议。
+
+`startup_window.py` 在便携 EXE 启动阶段最多观察 90 秒前台权限窗口标题，跳过已存在的安全中心窗口；新提示消失后仅恢复主窗口一次，不操作提示、输入或防火墙权限。短暂置顶 250ms 后解除；尊重用户主动最小化。未知语言/不同系统提示可能无法识别，不能保证绕过 Windows 前台限制。UI 先完成映射，再在 150ms 后启动网络线程。
+
+发布包固定名 `lindrop-windows-x64.zip`；updates 仍校验仓库、tag URL 和 SHA-256，并可读取旧版带版本名附件。0.5.0 的旧检查器无法读取固定名附件，首次请手动访问 Releases。`scripts/Generate-Icon.py` 仅依赖标准库，可重建全部 PNG 和 ICO；形状坐标在源码顶部，修改后运行该脚本。build 将 ICO 写入 EXE 并捆绑 PNG；Tk 保持图片对象引用，标题栏/任务栏使用原生图标，主界面显示 32px。

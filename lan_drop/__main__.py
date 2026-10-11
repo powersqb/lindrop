@@ -16,6 +16,11 @@ DEFAULT_DATA = ROOT / "邻传数据" if getattr(sys, "frozen", False) else ROOT 
 
 
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == "--apply-update":
+        from .installer import run_helper
+
+        run_helper(sys.argv[2])
+        return
     parser = argparse.ArgumentParser(description="邻传 · 局域网桌面互传")
     parser.add_argument("--host")
     parser.add_argument("--port", type=int, default=8765)

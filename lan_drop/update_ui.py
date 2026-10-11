@@ -1,12 +1,14 @@
 """Manual update UI; the window thread consumes worker results via ui_events."""
 
 import os
+import sys
 import threading
 import tkinter as tk
 import webbrowser
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from . import __version__
+from .installer import prepare, start_helper
 from .updates import RELEASES_URL, check_latest, download
 
 
@@ -59,13 +61,19 @@ class UpdateUI:
         ttk.Button(row, text="GitHub 发布页", command=lambda: webbrowser.open(RELEASES_URL)).pack(
             side="right"
         )
+        install_row = ttk.Frame(frame)
+        install_row.pack(fill="x", pady=(8, 0))
         self.update_open_button = ttk.Button(
-            frame, text="打开已下载的文件夹", command=self.open_update_folder, state="disabled"
+            install_row, text="打开下载文件夹", command=self.open_update_folder, state="disabled"
         )
-        self.update_open_button.pack(anchor="e", pady=(8, 0))
+        self.update_open_button.pack(side="left")
+        self.install_button = ttk.Button(
+            install_row, text="安装并重启", command=self.install_update, state="disabled"
+        )
+        self.install_button.pack(side="right")
         ttk.Label(
             frame,
-            text="下载后退出邻传，手动替换 EXE；保留旁边的“邻传数据”文件夹。",
+            text="校验后点击安装并重启，自动替换 EXE，保留数据和设备信任。",
             wraplength=420,
             foreground="#78857c",
         ).pack(anchor="w", pady=(8, 0))
@@ -81,8 +89,10 @@ class UpdateUI:
         self.update_busy = True
         self.update_cancel.clear()
         self.update_release = None
+        self.update_path = None
         self.check_button.configure(state="disabled")
         self.download_button.configure(state="disabled")
+        self.install_button.configure(state="disabled")
         self.update_status.set("正在连接 GitHub 检查版本…")
 
         def worker():
@@ -124,10 +134,58 @@ class UpdateUI:
         if self.update_path:
             os.startfile(str(self.update_path.parent))
 
+    def install_update(self):
+        if self.update_busy or not self.update_path or not self.update_release:
+            return
+        if self.sending or self.incoming or self.starting:
+            messagebox.showinfo(
+                "软件更新", "请先完成或取消文件传输，再安装更新。", parent=self.window
+            )
+            return
+        if not getattr(sys, "frozen", False):
+            self.update_status.set("源码运行请通过 Git 更新；自动替换仅适用于独立 EXE。")
+            return
+        self.update_busy = True
+        self.update_cancel.clear()
+        for button in (self.check_button, self.download_button, self.install_button):
+            button.configure(state="disabled")
+        self.update_status.set("正在准备替换；成功后会自动重启，聊天记录将在重启时清空。")
+        archive, release = self.update_path, self.update_release
+        arguments = ["--data-dir", str(self.args.data_dir.resolve()), "--port", str(self.args.port)]
+        if self.args.host:
+            arguments.extend(["--host", self.args.host])
+        if self.args.name:
+            arguments.extend(["--name", self.args.name])
+
+        def worker():
+            manifest = None
+            try:
+                manifest = prepare(archive, release, sys.executable, arguments)
+                if self.update_cancel.is_set():
+                    raise InterruptedError("更新已取消")
+                start_helper(manifest)
+                self.ui_events.put({"kind": "update_install_ready", "manifest": manifest})
+            except Exception as error:
+                if manifest:
+                    (manifest.parent / "cancel").touch()
+                self.ui_events.put({"kind": "update_error", "text": str(error)})
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def handle_update(self, event):
         if self.closed:
             return
         kind = event["kind"]
+        if kind == "update_install_ready":
+            if self.update_cancel.is_set() or self.sending or self.incoming or self.starting:
+                (event["manifest"].parent / "cancel").touch()
+                self.update_busy = False
+                self.check_button.configure(state="normal")
+                self.install_button.configure(state="normal")
+                self.update_status.set("安装已取消，请结束文件传输后重试。")
+            else:
+                self.close()
+            return
         if kind == "update_progress":
             self.update_progress["value"] = 100 * event["done"] / event["total"]
             return
@@ -149,8 +207,11 @@ class UpdateUI:
             self.update_path = event["path"]
             self.update_progress["value"] = 100
             self.update_open_button.configure(state="normal")
-            self.update_status.set("下载完成，SHA-256 校验通过。请退出 App 后手动替换 EXE。")
+            self.install_button.configure(state="normal")
+            self.update_status.set("SHA-256 校验通过。点击“安装并重启”自动替换 EXE。")
         elif kind == "update_error":
             self.update_status.set(event["text"])
             if self.update_release:
                 self.download_button.configure(state="normal")
+            if self.update_path:
+                self.install_button.configure(state="normal")

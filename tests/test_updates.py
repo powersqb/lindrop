@@ -51,6 +51,22 @@ def test_new_version_not_lexicographic():
         )[1]
 
 
+def test_stable_package_name_download_and_historical_release_support(tmp_path):
+    data = b"verified stable-name release"
+    value = payload(data)
+    asset = value["assets"][0]
+    asset["name"] = "lindrop-windows-x64.zip"
+    asset["browser_download_url"] = (
+        f"https://github.com/{REPOSITORY}/releases/download/v0.4.0/lindrop-windows-x64.zip"
+    )
+    release = parse_release(value)
+    path = download(
+        release, tmp_path, threading.Event(), lambda *_: None, opener=lambda _: io.BytesIO(data)
+    )
+    assert path.name == "lindrop-windows-x64.zip" and path.read_bytes() == data
+    assert parse_release(payload()).filename == "lindrop-v0.4.0-windows-x64.zip"
+
+
 @pytest.mark.parametrize("version", ["v1.0", "0.4.0-beta", "01.0.0", "1.0.0/../x", None])
 def test_reject_invalid_versions(version):
     with pytest.raises(ValueError):

@@ -3,6 +3,7 @@
 import json
 import os
 import queue
+import sys
 import threading
 import time
 import tkinter as tk
@@ -13,6 +14,7 @@ from .chat_ui import ChatUI
 from .discovery import Peer, device_name
 from .layout import build
 from .peer import PeerNode, describe_files, peer_request
+from .startup_window import StartupWindow
 from .update_ui import UpdateUI
 
 GREEN, BG, MUTED = "#26684e", "#f5f8f4", "#78857c"
@@ -38,7 +40,13 @@ class Desktop(ChatUI, UpdateUI):
         self.file_peers = {}
         build(self, args)
         self.window.protocol("WM_DELETE_WINDOW", self.close)
-        self.start()
+        # Map the main window before listen() can open a Windows permission prompt.
+        self.window.update_idletasks()
+        if getattr(sys, "frozen", False):
+            self.startup_window = StartupWindow(self.window)
+            self.startup_window.present()
+            self.window.after(250, self.startup_window.poll)
+        self.window.after(150, self.start)
         self.window.after(100, self.tick)
 
     def start(self):
@@ -197,12 +205,49 @@ class Desktop(ChatUI, UpdateUI):
                 if str(self.accept_button["state"]) == "disabled" and not accepted:
                     self.node.protocol.abort(self.incoming)
                 else:
+                    destinations = None
                     if accepted:
                         offer = self.node.protocol.offers[self.incoming]
+                        destinations = self.receive_names(offer)
+                        if destinations is None:
+                            return
                         self.node.trust.remember(offer.sender)
-                    self.node.protocol.decide(self.incoming, accepted)
+                    self.node.protocol.decide(self.incoming, accepted, destinations)
             except ValueError as error:
                 messagebox.showerror("接收文件", str(error), parent=self.window)
+
+    def receive_names(self, offer):
+        """Keep sender names unless the receiver explicitly chooses another name."""
+        choices, used = [], set()
+        for item in offer.files:
+            name, overwrite = item["name"], False
+            while True:
+                duplicate = name.casefold() in used
+                target = self.node.received / name
+                if not duplicate and not target.exists() and not target.is_symlink():
+                    break
+                if not duplicate and target.is_file() and not target.is_symlink():
+                    answer = messagebox.askyesnocancel(
+                        "同名文件",
+                        f"{name} 已存在。\n是：覆盖；否：另存；取消：暂不接收。",
+                        parent=self.window,
+                    )
+                    if answer is None:
+                        return None
+                    if answer:
+                        overwrite = True
+                        break
+                value = simpledialog.askstring(
+                    "另存文件", f"{name} 无法使用，请输入其他文件名：", parent=self.window
+                )
+                if value is None:
+                    return None
+                from .server import safe_name
+
+                name = safe_name(value)
+            used.add(name.casefold())
+            choices.append((name, overwrite))
+        return choices
 
     def manual_connect(self):
         if not self.node:

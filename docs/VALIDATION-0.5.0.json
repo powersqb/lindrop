@@ -1,0 +1,85 @@
+{
+  "version": "0.5.0",
+  "date": "2026-10-11",
+  "source_repository": "apps/lindrop",
+  "release_tag": "v0.5.0",
+  "runtime": "Windows x64 / Python 3.12.15 / Tk",
+  "exe": "outputs/邻传/邻传.exe",
+  "exe_bytes": 16618010,
+  "exe_sha256": "edf3bcacd2af2e739e1faec23ce29f8cf1ab22b92db2a4815b42eaef51a70933",
+  "local_zip": "outputs/release-050-local/lindrop-v0.5.0-windows-x64.zip",
+  "app_tests": {
+    "passed": 46,
+    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/tests-05-release-final"
+  },
+  "engineering_tests": {
+    "passed": 20,
+    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=outputs/engineering-tests-050-final"
+  },
+  "ruff": "check and format --check passed",
+  "packaged_selftest": {
+    "ok": true,
+    "version": "0.5.0",
+    "checks": [
+      "bundled Tk and native TkDnD startup",
+      "real LAN multicast discovery between two local app instances",
+      "certificate pin mismatch blocked before control request",
+      "one-time identity comparison, receiver acceptance and bidirectional HTTPS transfer",
+      "remembered devices connect automatically for bidirectional encrypted Unicode chat"
+    ],
+    "sha256": "87d9ec463e59ead4ee43afe9e6848ec630bd35c2de3d9b7a535ed6479a740ece"
+  },
+  "ui": {
+    "screenshot": "docs/assets/desktop-0.5.0.png",
+    "verified": "Windows EXE 720x580 inspected; Tk test checks composer immediately below transcript and above file tools at 640x520"
+  },
+  "interaction_tests": [
+    "simultaneous first messages require one matching human comparison, never send unconfirmed text",
+    "device ID, certificate pin and trust survive process restart; known devices reconnect without verification dialogs",
+    "first-file identity verification then receiver-only acceptance; subsequent rejection saves no extra files",
+    "receiver cancellation interrupts a stalled upload and cleans temporary files",
+    "changed known certificate pin blocks connection; explicit forget removes authorization"
+  ],
+  "second_physical_computer": "pending",
+  "github": {
+    "repository": "https://github.com/powersqb/lindrop",
+    "visibility": "PUBLIC",
+    "release": "https://github.com/powersqb/lindrop/releases/tag/v0.5.0",
+    "status": "published and verified",
+    "release_tag_commit": "9e43b86",
+    "ci_run": "https://github.com/powersqb/lindrop/actions/runs/38120803309",
+    "ci_conclusion": "success",
+    "ci_tests": {
+      "passed": 45,
+      "skipped": 1,
+      "skip_reason": "LAN multicast needs real adapter; covered locally with published EXE"
+    }
+  },
+  "privacy": "LAN HTTPS with persistent verified pins; chat only in memory; no relay/telemetry; GitHub connections only for manual updates",
+  "local_build": {
+    "exe_sha256": "378481ef0fa2c9029dcad14438597f2f79b1f3686ce3f3c9c283934bde1bfc98",
+    "exe_bytes": 16661115,
+    "packaged_selftest": {
+      "ok": true,
+      "version": "0.5.0",
+      "checks": [
+        "bundled Tk and native TkDnD startup",
+        "real LAN multicast discovery between two local app instances",
+        "certificate pin mismatch blocked before control request",
+        "one-time identity comparison, receiver acceptance and bidirectional HTTPS transfer",
+        "remembered devices connect automatically for bidirectional encrypted Unicode chat"
+      ],
+      "sha256": "87d9ec463e59ead4ee43afe9e6848ec630bd35c2de3d9b7a535ed6479a740ece"
+    }
+  },
+  "zip": "outputs/邻传-0.5.0-Windows.zip",
+  "live_update": {
+    "previous": "0.4.1",
+    "latest": "0.5.0",
+    "upgrade_available": true,
+    "release_url": "https://github.com/powersqb/lindrop/releases/tag/v0.5.0",
+    "size": 16333217,
+    "sha256": "a23492571b9fd9312380fafd0e4c02423e33deadd9b77292a10bd2068bffcfce",
+    "digest_matches": true
+  }
+}

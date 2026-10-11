@@ -3,6 +3,7 @@
 import json
 import socket
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk
 
 from tkinterdnd2 import DND_FILES, TkinterDnD
@@ -17,6 +18,14 @@ def build(app, args):
     tk_root.title(f"邻传 {__version__} · 局域网工具")
     tk_root.geometry("720x580")
     tk_root.minsize(640, 520)
+    assets = Path(__file__).parent / "assets"
+    app.icon_images = [
+        tk.PhotoImage(master=tk_root, file=str(assets / f"icon-{size}.png"))
+        for size in (16, 32, 64)
+    ]
+    tk_root.iconphoto(True, *app.icon_images)
+    if tk_root.tk.call("tk", "windowingsystem") == "win32":
+        tk_root.iconbitmap(str(assets / "lindrop.ico"))
     style = ttk.Style(tk_root)
     style.theme_use("clam")
     style.configure("TFrame", background="#f5f8f4")
@@ -38,7 +47,8 @@ def build(app, args):
     body.pack(fill="both", expand=True)
     header = ttk.Frame(body)
     header.pack(fill="x", pady=(0, 8))
-    ttk.Label(header, text="↔ 邻传", font=("Microsoft YaHei", 16, "bold")).pack(side="left")
+    ttk.Label(header, image=app.icon_images[1]).pack(side="left", padx=(0, 8))
+    ttk.Label(header, text="邻传", font=("Microsoft YaHei", 16, "bold")).pack(side="left")
     ttk.Label(header, text="仅局域网", foreground="#78857c").pack(side="left", padx=10)
     ttk.Button(header, text="设置", command=app.settings).pack(side="right")
     ttk.Button(header, text="接收文件夹", command=app.open_folder).pack(side="right", padx=6)

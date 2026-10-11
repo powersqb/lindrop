@@ -13,10 +13,12 @@ $env:PYINSTALLER_CONFIG_DIR = Join-Path $taskRoot '.cache\pyinstaller'
 $taskArguments = @(
     '-m', 'PyInstaller', '--noconfirm', '--clean', '--onefile', '--windowed',
     '--name', '邻传', '--distpath', $OutputDirectory,
+    '--icon', (Join-Path $taskRoot 'lan_drop\assets\lindrop.ico'),
     '--workpath', (Join-Path $taskRoot 'build\lan-drop'),
     '--specpath', (Join-Path $taskRoot 'build'), '--paths', $taskRoot,
     '--collect-all', 'tkinterdnd2',
     '--add-data', "$taskRoot\lan_drop\web;lan_drop\web",
+    '--add-data', "$taskRoot\lan_drop\assets;lan_drop\assets",
     '--add-binary', "$OpenSSLDirectory\openssl.exe;openssl",
     '--add-binary', "$OpenSSLDirectory\libcrypto-3-x64.dll;openssl",
     '--add-binary', "$OpenSSLDirectory\libssl-3-x64.dll;openssl",
