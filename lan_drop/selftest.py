@@ -6,9 +6,10 @@ import json
 import ssl
 import threading
 import time
-import tkinter
 import traceback
 from pathlib import Path
+
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from . import __version__
 from .peer import PeerNode, describe_files, peer_request
@@ -20,11 +21,12 @@ def run(directory: Path):
     report = {"ok": False, "version": __version__, "checks": []}
     nodes = []
     try:
-        window = tkinter.Tk()
+        window = TkinterDnD.Tk()
+        window.drop_target_register(DND_FILES)
         window.withdraw()
         window.update()
         window.destroy()
-        report["checks"].append("bundled Tk startup")
+        report["checks"].append("bundled Tk and native TkDnD startup")
         addresses = local_addresses()
         host = addresses[0] if addresses else "127.0.0.1"
         a = PeerNode(host, 0, directory / "a", "诊断设备 A", discover=bool(addresses))
@@ -79,6 +81,28 @@ def run(directory: Path):
         report["checks"].append(
             "matching verification codes, explicit acceptance and bidirectional HTTPS transfer"
         )
+        import secrets
+
+        offer = a.begin(b.as_peer(), [], chat=True)
+        assert b.chat.channels[offer["id"]].code == offer["code"]
+        b.chat.decide(offer["id"], True)
+        peer_request(
+            b.as_peer(), "POST", f"/peer/chat/{offer['id']}/activate", {}, offer["secret"], a.host
+        )
+        peer_request(
+            b.as_peer(),
+            "POST",
+            f"/peer/chat/{offer['id']}/send",
+            {"message_id": secrets.token_hex(16), "text": "中文聊天 hello"},
+            offer["secret"],
+            a.host,
+        )
+        b.chat.append(offer["id"], "收到", secrets.token_hex(16), "receiver")
+        reply = peer_request(
+            b.as_peer(), "GET", f"/peer/chat/{offer['id']}/0", secret=offer["secret"], source=a.host
+        )
+        assert [m["text"] for m in reply["messages"]] == ["中文聊天 hello", "收到"]
+        report["checks"].append("accepted bidirectional encrypted Unicode chat")
         report["sha256"] = hashlib.sha256(payload).hexdigest()
         report["ok"] = True
     except Exception:

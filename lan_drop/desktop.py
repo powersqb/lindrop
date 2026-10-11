@@ -3,17 +3,15 @@
 import json
 import os
 import queue
-import socket
 import threading
 import time
-import tkinter as tk
-from datetime import datetime
 from pathlib import Path
-from tkinter import filedialog, messagebox, simpledialog, ttk
+from tkinter import filedialog, messagebox, simpledialog
 
+from .chat_ui import ChatUI
 from .discovery import Peer, device_name
+from .layout import build
 from .peer import PeerNode, describe_files, peer_request
-from .server import local_addresses
 
 GREEN, BG, MUTED = "#26684e", "#f5f8f4", "#78857c"
 
@@ -25,7 +23,7 @@ def human_size(size):
         size /= 1024
 
 
-class Desktop:
+class Desktop(ChatUI):
     def __init__(self, args):
         self.args, self.node = args, None
         self.closed, self.sending, self.starting = False, False, False
@@ -33,183 +31,10 @@ class Desktop:
         self.send_cancel, self.send_confirm = threading.Event(), threading.Event()
         self.paths, self.peers, self.manual = [], {}, {}
         self.manual_probe_at, self.incoming = 0, None
-        self.window = tk.Tk()
-        self.window.title("邻传 · 桌面互传 0.2.0")
-        self.window.geometry("960x780")
-        self.window.minsize(900, 740)
-        self.window.configure(bg=BG)
-        style = ttk.Style(self.window)
-        style.theme_use("clam")
-        style.configure("TFrame", background=BG)
-        style.configure("TLabel", background=BG, foreground="#23382f", font=("Microsoft YaHei", 10))
-        style.configure("TButton", font=("Microsoft YaHei", 10), padding=(12, 8))
-        style.configure("Green.TButton", background=GREEN, foreground="white")
-        style.map("Green.TButton", background=[("active", "#1c513b")])
-        style.configure(
-            "Treeview",
-            font=("Microsoft YaHei", 10),
-            rowheight=34,
-            background="white",
-            fieldbackground="white",
-            borderwidth=0,
-        )
-        style.configure("Treeview.Heading", font=("Microsoft YaHei", 9), background="#eaf0e7")
-        style.map(
-            "Treeview", background=[("selected", "#e0eddf")], foreground=[("selected", "#224d34")]
-        )
-        body = ttk.Frame(self.window, padding=20)
-        body.pack(fill="both", expand=True)
-        header = ttk.Frame(body)
-        header.pack(fill="x")
-        ttk.Label(header, text="↔ 邻传", font=("Microsoft YaHei", 24, "bold")).pack(side="left")
-        ttk.Label(header, text="桌面互传 · 仅局域网", foreground=MUTED).pack(side="left", padx=18)
-        ttk.Button(header, text="打开接收文件夹", command=self.open_folder).pack(side="right")
-        profile = ttk.Frame(body)
-        profile.pack(fill="x", pady=(16, 12))
-        name = args.name or socket.gethostname()
-        if not args.name:
-            try:
-                name = device_name(
-                    json.loads((args.data_dir / "profile.json").read_text("utf-8"))["name"]
-                )
-            except (OSError, ValueError, KeyError, TypeError):
-                pass
-        self.name_var = tk.StringVar(value=name)
-        ttk.Label(profile, text="我的设备名").pack(side="left")
-        ttk.Entry(profile, textvariable=self.name_var, width=23).pack(side="left", padx=8)
-        ttk.Button(profile, text="保存", command=self.rename).pack(side="left")
-        addresses = local_addresses() or ["127.0.0.1"]
-        self.host_var = tk.StringVar(value=args.host or addresses[0])
-        ttk.Label(profile, text="网络").pack(side="left", padx=(20, 8))
-        self.network = ttk.Combobox(
-            profile, textvariable=self.host_var, values=addresses, width=17, state="readonly"
-        )
-        self.network.pack(side="left")
-        self.network.bind("<<ComboboxSelected>>", self.switch_network)
-        self.status = tk.StringVar(value="正在启动加密连接…")
-        ttk.Label(body, textvariable=self.status, foreground=GREEN).pack(anchor="w", pady=(0, 14))
-        top = ttk.Frame(body)
-        top.pack(fill="both", expand=True)
-        top.columnconfigure(0, weight=2, minsize=320)
-        top.columnconfigure(1, weight=3, minsize=500)
-        top.rowconfigure(0, weight=1)
-        left = ttk.Frame(top)
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 18))
-        heading = ttk.Frame(left)
-        heading.pack(fill="x", pady=(0, 10))
-        self.count = tk.StringVar(value="附近设备 · 0")
-        ttk.Label(heading, textvariable=self.count, font=("Microsoft YaHei", 12, "bold")).pack(
-            side="left"
-        )
-        ttk.Button(heading, text="刷新", command=self.refresh).pack(side="right")
-        self.devices = ttk.Treeview(
-            left, columns=("name", "ip"), show="headings", selectmode="browse", height=5
-        )
-        for key, label, width in (("name", "在线的邻传设备", 160), ("ip", "地址", 135)):
-            self.devices.heading(key, text=label)
-            self.devices.column(key, width=width, minwidth=110)
-        self.devices.pack(fill="both", expand=True)
-        self.devices.bind("<<TreeviewSelect>>", self.select_peer)
-        ttk.Label(
-            left,
-            text="只显示运行邻传的设备。\n两台电脑都打开邻传，稍等几秒即可发现。",
-            foreground=MUTED,
-            font=("Microsoft YaHei", 9),
-        ).pack(anchor="w", pady=10)
-        ttk.Button(left, text="找不到设备？手动连接", command=self.manual_connect).pack(anchor="w")
-        right = ttk.Frame(top)
-        right.grid(row=0, column=1, sticky="nsew")
-        self.target = tk.StringVar(value="选择左侧设备，直接发送文件")
-        ttk.Label(right, textvariable=self.target, font=("Microsoft YaHei", 12, "bold")).pack(
-            anchor="w", pady=(0, 10)
-        )
-        self.file_list = tk.Listbox(
-            right,
-            height=3,
-            relief="flat",
-            bg="white",
-            fg="#344b3b",
-            font=("Microsoft YaHei", 10),
-            selectbackground="#e0eddf",
-        )
-        self.file_list.pack(fill="x", pady=(0, 8))
-        self.file_list.insert("end", "还没有选择文件")
-        controls = ttk.Frame(right)
-        controls.pack(fill="x")
-        self.choose_button = ttk.Button(controls, text="选择文件", command=self.choose)
-        self.choose_button.pack(side="left")
-        self.send_button = ttk.Button(
-            controls, text="发送给选中设备", command=self.send, style="Green.TButton"
-        )
-        self.send_button.pack(side="left", padx=8)
-        self.cancel_button = ttk.Button(
-            controls, text="取消", command=self.cancel_send, state="disabled"
-        )
-        self.cancel_button.pack(side="left")
-        self.send_text = tk.StringVar(value="文件直接保存到对方电脑，不需要浏览器。")
-        ttk.Label(right, textvariable=self.send_text, foreground=MUTED, wraplength=490).pack(
-            anchor="w", pady=(10, 5)
-        )
-        self.send_progress = ttk.Progressbar(right, maximum=100)
-        self.send_progress.pack(fill="x")
-        self.out_code = tk.StringVar()
-        verify_row = ttk.Frame(right)
-        verify_row.pack(fill="x", pady=(8, 3))
-        ttk.Label(
-            verify_row, textvariable=self.out_code, font=("Consolas", 16, "bold"), foreground=GREEN
-        ).pack(side="left")
-        self.verify_button = ttk.Button(
-            verify_row, text="一致，继续发送", command=self.confirm_send, state="disabled"
-        )
-        self.verify_button.pack(side="right")
-        receive = ttk.Frame(right)
-        receive.pack(fill="x", pady=(18, 10))
-        ttk.Label(receive, text="接收请求", font=("Microsoft YaHei", 12, "bold")).pack(anchor="w")
-        self.receive_text = tk.StringVar(value="等待其他邻传设备发送文件…")
-        ttk.Label(receive, textvariable=self.receive_text, wraplength=490).pack(
-            anchor="w", pady=(7, 2)
-        )
-        self.in_code = tk.StringVar()
-        row = ttk.Frame(receive)
-        row.pack(fill="x")
-        ttk.Label(
-            row, textvariable=self.in_code, foreground=GREEN, font=("Consolas", 16, "bold")
-        ).pack(side="left")
-        self.accept_button = ttk.Button(
-            row,
-            text="一致，接收",
-            style="Green.TButton",
-            command=lambda: self.decide(True),
-            state="disabled",
-        )
-        self.accept_button.pack(side="right")
-        self.reject_button = ttk.Button(
-            row, text="拒绝", command=lambda: self.decide(False), state="disabled"
-        )
-        self.reject_button.pack(side="right", padx=8)
-        self.receive_progress = ttk.Progressbar(receive, maximum=100)
-        self.receive_progress.pack(fill="x", pady=(7, 0))
-        ttk.Label(body, text="本次传输记录", font=("Microsoft YaHei", 10, "bold")).pack(
-            anchor="w", pady=(6, 7)
-        )
-        self.history = ttk.Treeview(
-            body, columns=("time", "direction", "file", "state"), show="headings", height=2
-        )
-        for key, label, width in (
-            ("time", "时间", 80),
-            ("direction", "方向", 140),
-            ("file", "文件", 440),
-            ("state", "状态", 130),
-        ):
-            self.history.heading(key, text=label)
-            self.history.column(key, width=width, minwidth=60, stretch=key == "file")
-        self.history.pack(fill="x")
-        ttk.Label(
-            body,
-            text="HTTPS 加密 · 核对双方验证码后再接收 · 防火墙只允许专用网络",
-            font=("Microsoft YaHei", 9),
-            foreground=MUTED,
-        ).pack(anchor="w", pady=(12, 0))
+        self.sessions, self.conversations, self.chat_dialogs = {}, {}, {}
+        self.displayed_peer = None
+        self.file_peers = {}
+        build(self, args)
         self.window.protocol("WM_DELETE_WINDOW", self.close)
         self.start()
         self.window.after(100, self.tick)
@@ -246,7 +71,7 @@ class Desktop:
             messagebox.showerror("设备名", str(error), parent=self.window)
 
     def switch_network(self, _=None):
-        if self.starting or self.sending or self.incoming:
+        if self.starting or self.sending or self.incoming or self.sessions:
             if self.node:
                 self.host_var.set(self.node.host)
             messagebox.showinfo("切换网络", "请等待当前传输完成再切换网络", parent=self.window)
@@ -272,7 +97,14 @@ class Desktop:
     def select_peer(self, _=None):
         selected = self.devices.selection()
         peer = self.peers.get(selected[0]) if selected else None
-        self.target.set(f"发送给 {peer.name}" if peer else "选择左侧设备，直接发送文件")
+        self.target.set(f"{peer.name}" if peer else "选择设备开始")
+        identifier = peer.id if peer else None
+        if identifier != self.displayed_peer:
+            self.displayed_peer = identifier
+            self.composer.delete("1.0", "end")
+            if peer:
+                self.render_chat(peer)
+        self.refresh_chat_controls()
 
     def choose(self):
         paths = filedialog.askopenfilenames(title="选择要发送的文件", parent=self.window)
@@ -289,6 +121,7 @@ class Desktop:
             messagebox.showinfo("发送文件", "请先选择在线设备和要发送的文件", parent=self.window)
             return
         paths, node = list(self.paths), self.node
+        self.file_peers[peer.id] = peer
         self.sending = True
         self.send_cancel.clear()
         self.send_confirm.clear()
@@ -333,7 +166,7 @@ class Desktop:
                             "send_progress", phase="发送", name=name, done=done, total=total
                         ),
                     )
-                    node.emit("sent", name=item["name"], peer=peer.name)
+                    node.emit("sent", name=item["name"], peer=peer.name, peer_id=peer.id)
                 node.emit("send_end", text=f"已发送 {len(files)} 个文件给 {peer.name}", ok=True)
             except Exception as error:
                 if offer:
@@ -393,15 +226,40 @@ class Desktop:
         directory.mkdir(parents=True, exist_ok=True)
         os.startfile(str(directory))
 
-    def add_history(self, direction, name, state):
-        self.history.insert(
-            "", 0, values=(datetime.now().strftime("%H:%M"), direction, name, state)
-        )
-        for row in self.history.get_children()[100:]:
-            self.history.delete(row)
+    def add_history(self, direction, name, state, peer_id=None):
+        peer = self.file_peers.get(peer_id) if peer_id else self.selected_peer()
+        if peer:
+            self.log(peer, "文件 · " + direction, name + " · " + state)
+        else:
+            self.status.set(name + " · " + state)
+
+    def settings(self):
+        self.settings_window.deiconify()
+        self.settings_window.lift()
+
+    def drop_files(self, event):
+        if self.sending:
+            self.status.set("当前正在发送，请稍后拖入文件")
+            return "none"
+        try:
+            paths = list(self.window.tk.splitlist(event.data))
+            if not paths or len(paths) > 50 or any(not Path(p).is_file() for p in paths):
+                raise ValueError("请拖入 1 至 50 个普通文件；暂不支持文件夹")
+            if not self.node or not self.selected_peer():
+                raise ValueError("请先选择在线设备，再拖入文件")
+            self.paths = paths
+            self.file_list.delete(0, "end")
+            self.file_list.insert("end", "、".join(Path(p).name for p in paths))
+            self.send()
+            return "copy"
+        except (ValueError, OSError) as error:
+            self.status.set(str(error))
+            return "none"
 
     def clear_incoming(self, text):
         self.incoming = None
+        self.receive_card.pack_forget()
+        self.status.set(text)
         self.receive_text.set(text)
         self.in_code.set("")
         self.accept_button.configure(state="disabled")
@@ -409,6 +267,9 @@ class Desktop:
 
     def handle(self, event):
         kind = event["kind"]
+        if kind.startswith("chat_"):
+            self.handle_chat(event)
+            return
         if kind == "ready":
             self.node = event["node"]
             self.starting = False
@@ -426,6 +287,7 @@ class Desktop:
             if peer.id in self.manual or (kind == "manual_peer" and len(self.manual) < 16):
                 self.manual[peer.id] = peer
         elif kind == "outgoing_offer":
+            self.send_card.pack(fill="x", before=self.composer)
             self.out_code.set(event["code"])
             self.send_text.set(f"请与 {event['name']} 核对双方窗口中的验证码，然后继续发送。")
             self.verify_button.configure(state="normal")
@@ -436,8 +298,9 @@ class Desktop:
             self.send_progress["value"] = percent
             self.send_text.set(f"{event['phase']} · {event['name']} · {percent:.0f}%")
         elif kind == "sent":
-            self.add_history("发送 → " + event["peer"], event["name"], "已完成")
+            self.add_history("发送 → " + event["peer"], event["name"], "已完成", event["peer_id"])
         elif kind == "send_end":
+            self.send_card.pack_forget()
             self.sending = False
             self.send_text.set(event["text"])
             self.out_code.set("")
@@ -448,7 +311,9 @@ class Desktop:
             if not event["ok"]:
                 self.add_history("发送", "本次传输", event["text"])
         elif kind == "incoming":
+            self.receive_card.pack(fill="x", before=self.composer)
             self.incoming = event["id"]
+            self.file_peers[event["peer"].id] = event["peer"]
             total = sum(item["size"] for item in event["files"])
             names = "、".join(item["name"] for item in event["files"][:3])
             names = names[:75] + ("…" if len(names) > 75 else "")
@@ -475,7 +340,9 @@ class Desktop:
                 f"{human_size(event['total'])}"
             )
         elif kind == "received":
-            self.add_history("接收 ← " + event["peer"], event["name"], "已保存并校验")
+            self.add_history(
+                "接收 ← " + event["peer"], event["name"], "已保存并校验", event["peer_id"]
+            )
             if event["finished"]:
                 self.receive_progress["value"] = 100
                 self.clear_incoming("接收完成，可点击“打开接收文件夹”查看")
@@ -540,11 +407,14 @@ class Desktop:
                     break
         if self.node:
             self.node.protocol.sweep()
+            self.node.chat.sweep()
         self.update_peers()
         self.window.after(100, self.tick)
 
     def close(self):
         self.closed = True
+        for peer_id in list(self.sessions):
+            self.end_chat(peer_id)
         self.send_cancel.set()
         if self.node:
             self.node.close()

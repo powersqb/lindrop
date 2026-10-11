@@ -200,8 +200,13 @@ class PeerProtocol:
 
     def get(self, handler, path):
         self.sweep()
+        if path.startswith("/peer/chat/"):
+            self.node.chat.get(handler, path)
+            return
         if path == "/peer/hello":
-            handler.respond(200, {"app": "lindrop", "protocol": 2, **self.node.identity()})
+            handler.respond(
+                200, {"app": "lindrop", "protocol": 2, "chat": True, **self.node.identity()}
+            )
             return
         try:
             identifier = path.removeprefix("/peer/offers/")
@@ -230,7 +235,9 @@ class PeerProtocol:
             payload = json.loads(handler.rfile.read(length))
             if not isinstance(payload, dict):
                 raise ValueError("无效控制消息")
-            if path == "/peer/offer":
+            if path.startswith("/peer/chat/"):
+                self.node.chat.post(handler, path, payload)
+            elif path == "/peer/offer":
                 self.offer(handler, payload)
             elif path.startswith("/peer/cancel/"):
                 offer = self.authenticated_offer(handler, path.removeprefix("/peer/cancel/"))
@@ -290,7 +297,9 @@ class PeerProtocol:
             ):
                 raise ValueError("对方正在处理其他请求")
             self.offers[offer_id] = offer
-        self.node.emit("incoming", id=offer.id, name=sender.name, host=ip, files=files, code=code)
+        self.node.emit(
+            "incoming", id=offer.id, name=sender.name, host=ip, files=files, code=code, peer=sender
+        )
         handler.respond(
             201, {"id": offer.id, "secret": offer.secret, "code": code, "receiver_id": self.node.id}
         )
@@ -368,6 +377,7 @@ class PeerProtocol:
                 name=item["name"],
                 path=str(target),
                 peer=offer.sender.name,
+                peer_id=offer.sender.id,
                 finished=offer.status == "complete",
             )
             handler.respond(201, {"sha256": digest.hexdigest()})
@@ -399,6 +409,9 @@ class PeerNode:
         self.port = self.server.server_port
         self.received = self.server.state.received
         self.protocol = PeerProtocol(self)
+        from .chat import ChatProtocol
+
+        self.chat = ChatProtocol(self)
         self.server.peer_protocol = self.protocol
         self.discovery = None
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
@@ -456,12 +469,12 @@ class PeerNode:
             identifier, device_name(hello.get("name")), host, port, fingerprint, time.monotonic()
         )
 
-    def begin(self, peer, files):
+    def begin(self, peer, files, *, chat=False):
         nonce = secrets.token_hex(32)
         result = peer_request(
             peer,
             "POST",
-            "/peer/offer",
+            "/peer/chat/offer" if chat else "/peer/offer",
             {
                 **self.identity(),
                 "files": files,
