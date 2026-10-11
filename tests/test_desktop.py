@@ -10,6 +10,52 @@ from types import SimpleNamespace
 from lan_drop.peer import PeerNode
 
 
+def test_file_send_uses_verified_chat_endpoint_when_udp_source_is_rewritten(desktop, tmp_path):
+    from lan_drop.discovery import Peer
+    from lan_drop.peer import peer_request
+
+    app = desktop
+    phone = PeerNode("127.0.0.1", 0, tmp_path / "phone", "Phone", discover=False)
+    try:
+        peer = phone.as_peer()
+        app.node.trust.remember(peer)
+        phone.trust.remember(app.node.as_peer())
+        # Reproduce the phone initiating chat while its UDP beacon is relayed
+        # with the PC's address/port. The old file path connects to the PC and
+        # fails the phone certificate pin, despite chat working.
+        beacon = Peer(peer.id, peer.name, app.node.host, app.node.port, peer.fingerprint, peer.seen)
+        app.node.discovery = SimpleNamespace(snapshot=lambda: [beacon], close=lambda: None)
+        offer = phone.begin(app.node.as_peer(), [], chat=True, automatic=True)
+        peer_request(
+            app.node.as_peer(),
+            "POST",
+            f"/peer/chat/{offer['id']}/activate",
+            {},
+            offer["secret"],
+            phone.host,
+        )
+        pump(app, lambda: app.sessions.get(peer.id, {}).get("ready"))
+        app.update_peers()
+        assert app.peers[peer.id].port == phone.port
+        app.devices.selection_set(peer.id)
+        source = tmp_path / "original.txt"
+        source.write_bytes(b"file transfer after incoming chat")
+        app.send(paths=[source])
+        pump(app, lambda: bool(phone.protocol.offers))
+        incoming = next(iter(phone.protocol.offers.values()))
+        phone.protocol.decide(incoming.id, True)
+        pump(app, lambda: not app.sending)
+        assert (phone.received / source.name).read_bytes() == source.read_bytes()
+        assert app.file_peers[peer.id].fingerprint == peer.fingerprint
+        # A stopped or no-longer-trusted session must not refresh the route.
+        app.sessions[peer.id]["cancel"].set()
+        app.manual.clear()
+        app.update_peers()
+        assert app.peers[peer.id].port == app.node.port
+    finally:
+        phone.close()
+
+
 def pump(app, predicate, timeout=5):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:

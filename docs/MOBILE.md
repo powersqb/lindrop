@@ -2,7 +2,7 @@
 
 核对日期：2026-10-11。目标设备由用户提供：华为 Mate 80，HarmonyOS 7.0.0.109 SP6。
 
-**当前状态：Android 0.1.0 测试版已完成编译、8 项单元测试、Android Lint、与 Windows 协议的双向 TLS 互通，以及 Android 35 模拟器启动/Keystore/TLS 验证。** 用户已选择安卓版，不再等待鸿蒙开发工具。Windows 0.6.0 保持现状。Mate 80 上的实际互通、后台在线能力和安装流程尚未验证，不应标为已支持。记录见 [Android 验证结果](ANDROID-VALIDATION.json)。
+**当前状态：Android 0.1.0 测试版已完成编译、8 项单元测试、Android Lint、与 Windows 协议的双向 TLS 互通，以及 Android 35 模拟器启动/Keystore/TLS 验证。** 用户已选择安卓版，不再等待鸿蒙开发工具。Mate 80 / HarmonyOS 7 用户已确认安装运行、手动连接、文字聊天和手机发电脑成功；自动发现受限，电脑发手机在 0.6.0 因广播地址被改写而误连本机。0.6.1 修复该地址选择，电脑发手机待更新后真机复测，后台在线仍未验证。记录见 [Android 验证结果](ANDROID-VALIDATION.json)。
 
 ## 平台选择
 

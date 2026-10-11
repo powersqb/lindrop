@@ -451,6 +451,22 @@ class Desktop(ChatUI, UpdateUI):
             return
         peers = self.node.discovery.snapshot() if self.node.discovery else []
         now = time.monotonic()
+        # A LAN bridge can rewrite UDP sources. An active chat's endpoint was
+        # reverse-verified over pinned TLS; retain it instead of reconnecting to
+        # an untrusted beacon address (which may even point back to this PC).
+        for session in self.sessions.values():
+            peer = session["peer"]
+            if not session.get("ready") or session["cancel"].is_set():
+                continue
+            try:
+                if not self.node.trust.check(peer):
+                    continue
+            except ValueError:
+                continue
+            if peer.id in self.manual or len(self.manual) < 16:
+                self.manual[peer.id] = Peer(
+                    peer.id, peer.name, peer.host, peer.port, peer.fingerprint, now
+                )
         self.manual = {key: peer for key, peer in self.manual.items() if now - peer.seen < 8}
         self.peers = {peer.id: peer for peer in [*peers, *self.manual.values()]}
         for key in self.devices.get_children():

@@ -1,6 +1,6 @@
 # 邻传 · 个人局域网工具
 
-**0.6.0 · 2026-10-11**。Windows 独立 EXE，约 16 MiB，免安装。两台电脑各自打开 App，自动显示正在运行邻传的设备；选择设备即可双向聊天和传文件，不需要浏览器。
+**0.6.1 · 2026-10-11**。Windows 独立 EXE，约 16 MiB，免安装。两台电脑各自打开 App，自动显示正在运行邻传的设备；选择设备即可双向聊天和传文件，不需要浏览器。
 
 - 默认 720×580 窗口：左侧设备，右侧聊天；设置收进单独窗口。
 - 在线直聊：首次连接核对一次验证码并记住设备；以后 Enter 直接发送，Shift+Enter 换行。
@@ -19,7 +19,7 @@
 
 [完整使用说明](docs/USAGE.md) · [自己修改与打包](docs/DEVELOPMENT.md) · [版本记录](CHANGELOG.md) · [验证记录](docs/VALIDATION.json)
 
-已按用户选择开发 Android 0.1.0 测试版 APK，最低 Android 8；Mate 80 / HarmonyOS 7 兼容环境的实际效果待真机验证。[手机使用与构建](android/README.md) · [手机版协议与验证要求](docs/MOBILE.md)。Windows 稳定版仍为 0.6.0。
+已按用户选择开发 Android 0.1.0 测试版 APK，最低 Android 8；Mate 80 / HarmonyOS 7 兼容环境的实际效果待真机验证。[手机使用与构建](android/README.md) · [手机版协议与验证要求](docs/MOBILE.md)。Windows 稳定版为 0.6.1；修复兼容环境改写广播源地址时电脑发手机失败的问题。
 
 公开仓库：[powersqb/lindrop](https://github.com/powersqb/lindrop) · [下载正式版本](https://github.com/powersqb/lindrop/releases)
 

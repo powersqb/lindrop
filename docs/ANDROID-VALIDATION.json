@@ -32,5 +32,19 @@
     "target_sdk": 35,
     "java_core_test_certificate": "ECDSA P-256",
     "unit_tests": 8
+  },
+  "real_phone_feedback_2026_10_11": {
+    "user_confirmed": [
+      "Mate 80 HarmonyOS 7 APK install/start",
+      "manual phone-to-PC connection",
+      "text chat",
+      "phone-to-PC original-name file receipt"
+    ],
+    "diagnostic_confirmed": "Phone UDP source is rewritten to PC IPv4. Direct TLS to phone matches beacon pin; GET /peer/hello succeeds. Cause of UDP rewriting not determined.",
+    "pending": [
+      "PC-to-phone file after Windows 0.6.1 update",
+      "Android automatic discovery",
+      "background/lockscreen operation"
+    ]
   }
 }
